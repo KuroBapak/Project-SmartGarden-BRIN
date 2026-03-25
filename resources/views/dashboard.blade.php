@@ -94,6 +94,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <script>
@@ -160,7 +161,26 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    spanGaps: false, // Breaks the line if there is missing data (e.g. device offline)
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'dd MMM yyyy HH:mm',
+                                displayFormats: {
+                                    minute: 'HH:mm',
+                                    hour: 'HH:mm'
+                                }
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
                         y: {
                             beginAtZero: false
                         }
@@ -316,10 +336,25 @@
                         document.getElementById('val_light').textContent = parseInt(payload.light) + ' %';
                     }
                     
-                    // Note: Optional to push this real-time data to Chart.js here 
-                    // myChart.data.labels.push(new Date().toLocaleTimeString());
-                    // myChart.data.datasets[0].data.push(payload.water_temp);
-                    // myChart.update();
+                    // Real-time Push to Chart.js
+                    const now = new Date().toISOString();
+                    myChart.data.labels.push(now);
+                    
+                    if (payload.water_temp !== undefined) myChart.data.datasets[0].data.push(parseFloat(payload.water_temp));
+                    if (payload.air_temp !== undefined) myChart.data.datasets[1].data.push(parseFloat(payload.air_temp));
+                    if (payload.ph !== undefined) myChart.data.datasets[2].data.push(parseFloat(payload.ph));
+                    if (payload.humidity !== undefined) myChart.data.datasets[3].data.push(parseFloat(payload.humidity));
+                    if (payload.light !== undefined) myChart.data.datasets[4].data.push(parseFloat(payload.light));
+                    if (payload.tds !== undefined) myChart.data.datasets[5].data.push(parseFloat(payload.tds));
+                    if (payload.turbidity !== undefined) myChart.data.datasets[6].data.push(parseFloat(payload.turbidity));
+
+                    // Keep chart history manageable (e.g., last 100 points via realtime)
+                    if (myChart.data.labels.length > 200) {
+                        myChart.data.labels.shift();
+                        myChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+                    
+                    myChart.update('none'); // Update without full animation to be smooth
 
                 } catch (e) {
                     console.error('Failed to parse MQTT message:', e);

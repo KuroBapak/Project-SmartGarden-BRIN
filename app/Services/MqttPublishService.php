@@ -19,9 +19,16 @@ class MqttPublishService
         try {
             $message = json_encode($payload);
             
-            // Using standard env config since the PHP worker runs this, not the browser
-            $host = config('services.mqtt.host', '192.168.50.100');
+            // Using public tunnel as fallback specifically for Coolify containers
+            // If MQTT_HOST is local (192.168.x.x) and unreachable by Docker, we force use of the public tunnel
+            $host = config('services.mqtt.host');
             $port = config('services.mqtt.port', 1883); // TCP port
+            
+            // In Production (Coolify), local IPs often fail. Fallback to public domain if configured for local.
+            if (str_starts_with($host, '192.168.') && env('APP_ENV') === 'production') {
+                $host = str_replace('wss://', '', str_replace('ws://', '', 'mqtt.kurobapak.site'));
+            }
+
             $clientId = config('services.mqtt.client_id', 'LaravelCmd') . '-' . uniqid();
             $username = config('services.mqtt.username');
             $password = config('services.mqtt.password');

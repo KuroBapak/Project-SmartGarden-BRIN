@@ -36,7 +36,7 @@ class DashboardController extends Controller
                     |> range(start: -6h)
                     |> filter(fn: (r) => r[\"_measurement\"] == \"water_quality\")
                     |> filter(fn: (r) => r[\"_field\"] == \"ph\" or r[\"_field\"] == \"tds\" or r[\"_field\"] == \"water_temp\" or r[\"_field\"] == \"turbidity\" or r[\"_field\"] == \"air_temp\" or r[\"_field\"] == \"humidity\" or r[\"_field\"] == \"light\")
-                    |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
+                    |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
                     |> yield(name: \"mean\")
                 ";
 
@@ -51,7 +51,8 @@ class DashboardController extends Controller
                             $val = $record->getValue();
                             
                             if ($timeStr && $field) {
-                                $time = \Carbon\Carbon::parse($timeStr)->timezone('Asia/Jakarta')->format('H:i');
+                                // Keep full ISO 8601 timestamp for Chart.js time scale
+                                $time = \Carbon\Carbon::parse($timeStr)->timezone('Asia/Jakarta')->toIso8601String();
                                 $tempData[$time][$field] = $val;
                             }
                         } catch (\Exception $e) {
