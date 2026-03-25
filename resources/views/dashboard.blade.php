@@ -82,7 +82,25 @@
             <!-- Historical Data Chart -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Historical Data Trends</h3>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <h3 class="text-lg font-medium text-gray-900">Historical Data Trends</h3>
+                        <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
+                            <select name="range" onchange="this.form.submit()" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                <option value="-1h" {{ $range == '-1h' ? 'selected' : '' }}>Last 1 Hour</option>
+                                <option value="-6h" {{ $range == '-6h' ? 'selected' : '' }}>Last 6 Hours</option>
+                                <option value="-12h" {{ $range == '-12h' ? 'selected' : '' }}>Last 12 Hours</option>
+                                <option value="-24h" {{ $range == '-24h' ? 'selected' : '' }}>Last 24 Hours</option>
+                                <option value="-7d" {{ $range == '-7d' ? 'selected' : '' }}>Last 7 Days</option>
+                            </select>
+                            <select name="interval" onchange="this.form.submit()" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                <option value="5m" {{ $interval == '5m' ? 'selected' : '' }}>Jarak: 5m</option>
+                                <option value="10m" {{ $interval == '10m' ? 'selected' : '' }}>Jarak: 10m</option>
+                                <option value="15m" {{ $interval == '15m' ? 'selected' : '' }}>Jarak: 15m</option>
+                                <option value="30m" {{ $interval == '30m' ? 'selected' : '' }}>Jarak: 30m</option>
+                                <option value="1h" {{ $interval == '1h' ? 'selected' : '' }}>Jarak: 1h</option>
+                            </select>
+                        </form>
+                    </div>
                     <div class="relative h-96 w-full">
                         <canvas id="historicalChart"></canvas>
                     </div>
@@ -103,6 +121,14 @@
             const ctx = document.getElementById('historicalChart').getContext('2d');
             const rawData = @json($historicalData);
             
+            // Track the last time we added a point to the chart
+            let lastChartUpdateTime = new Date().getTime();
+            
+            const historicalSize = rawData.labels.length;
+            const initRadius = () => Array(historicalSize).fill(3);
+            const initHitRadius = () => Array(historicalSize).fill(10);
+            const initHoverRadius = () => Array(historicalSize).fill(4);
+
             const chartData = {
                 labels: rawData.labels,
                 datasets: [
@@ -110,47 +136,71 @@
                         label: 'Water Temp (°C)',
                         data: rawData.water_temp,
                         borderColor: 'rgb(59, 130, 246)', // blue
-                        tension: 0.3
+                        tension: 0.3,
+                        yAxisID: 'y-regular',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'Air Temp (°C)',
                         data: rawData.air_temp,
                         borderColor: 'rgb(239, 68, 68)', // red
-                        tension: 0.3
+                        tension: 0.3,
+                        yAxisID: 'y-regular',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'pH',
                         data: rawData.ph,
                         borderColor: 'rgb(34, 197, 94)', // green
-                        tension: 0.3
+                        tension: 0.3,
+                        yAxisID: 'y-regular',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'Humidity (%)',
                         data: rawData.humidity,
                         borderColor: 'rgb(6, 182, 212)', // cyan
                         tension: 0.3,
-                        hidden: true // hide % scale to keep temp/ph clear
+                        yAxisID: 'y-percent',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'Light Level (%)',
                         data: rawData.light,
                         borderColor: 'rgb(168, 85, 247)', // purple
                         tension: 0.3,
-                        hidden: true
+                        yAxisID: 'y-percent',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'TDS (ppm)',
                         data: rawData.tds,
                         borderColor: 'rgb(234, 179, 8)', // yellow
                         tension: 0.3,
-                        hidden: true // hidden by default to keep scale readable
+                        yAxisID: 'y-large',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     },
                     {
                         label: 'Turbidity',
                         data: rawData.turbidity,
                         borderColor: 'rgb(249, 115, 22)', // orange
                         tension: 0.3,
-                        hidden: true
+                        yAxisID: 'y-percent',
+                        pointRadius: initRadius(),
+                        pointHitRadius: initHitRadius(),
+                        pointHoverRadius: initHoverRadius()
                     }
                 ]
             };
@@ -165,6 +215,12 @@
                     interaction: {
                         mode: 'index',
                         intersect: false,
+                    },
+                    elements: {
+                        point: {
+                            hitRadius: 10,
+                            hoverRadius: 4
+                        }
                     },
                     scales: {
                         x: {
@@ -181,8 +237,31 @@
                                 minRotation: 45
                             }
                         },
-                        y: {
-                            beginAtZero: false
+                        'y-regular': {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Temp & pH' },
+                            beginAtZero: true,
+                            suggestedMax: 40
+                        },
+                        'y-percent': {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Percentage / Turbidity' },
+                            beginAtZero: true,
+                            suggestedMax: 100,
+                            grid: { drawOnChartArea: false } // don't overlap grids
+                        },
+                        'y-large': {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'TDS (ppm)' },
+                            suggestedMin: 0,
+                            suggestedMax: 1000,
+                            grid: { drawOnChartArea: false }
                         }
                     }
                 }
@@ -336,22 +415,34 @@
                         document.getElementById('val_light').textContent = parseInt(payload.light) + ' %';
                     }
                     
-                    // Real-time Push to Chart.js
+                    // Real-time Push to Chart.js (Live updates every message, no dots)
                     const now = new Date().toISOString();
                     myChart.data.labels.push(now);
                     
-                    if (payload.water_temp !== undefined) myChart.data.datasets[0].data.push(parseFloat(payload.water_temp));
-                    if (payload.air_temp !== undefined) myChart.data.datasets[1].data.push(parseFloat(payload.air_temp));
-                    if (payload.ph !== undefined) myChart.data.datasets[2].data.push(parseFloat(payload.ph));
-                    if (payload.humidity !== undefined) myChart.data.datasets[3].data.push(parseFloat(payload.humidity));
-                    if (payload.light !== undefined) myChart.data.datasets[4].data.push(parseFloat(payload.light));
-                    if (payload.tds !== undefined) myChart.data.datasets[5].data.push(parseFloat(payload.tds));
-                    if (payload.turbidity !== undefined) myChart.data.datasets[6].data.push(parseFloat(payload.turbidity));
+                    const pushToDataset = (i, val) => {
+                        myChart.data.datasets[i].data.push(parseFloat(val));
+                        myChart.data.datasets[i].pointRadius.push(0);
+                        myChart.data.datasets[i].pointHitRadius.push(0);
+                        myChart.data.datasets[i].pointHoverRadius.push(0);
+                    };
 
-                    // Keep chart history manageable (e.g., last 100 points via realtime)
+                    if (payload.water_temp !== undefined) pushToDataset(0, payload.water_temp);
+                    if (payload.air_temp !== undefined) pushToDataset(1, payload.air_temp);
+                    if (payload.ph !== undefined) pushToDataset(2, payload.ph);
+                    if (payload.humidity !== undefined) pushToDataset(3, payload.humidity);
+                    if (payload.light !== undefined) pushToDataset(4, payload.light);
+                    if (payload.tds !== undefined) pushToDataset(5, payload.tds);
+                    if (payload.turbidity !== undefined) pushToDataset(6, payload.turbidity);
+
+                    // Keep chart history manageable (e.g., last 200 points via realtime)
                     if (myChart.data.labels.length > 200) {
                         myChart.data.labels.shift();
-                        myChart.data.datasets.forEach(dataset => dataset.data.shift());
+                        myChart.data.datasets.forEach(dataset => {
+                            dataset.data.shift();
+                            dataset.pointRadius.shift();
+                            dataset.pointHitRadius.shift();
+                            dataset.pointHoverRadius.shift();
+                        });
                     }
                     
                     myChart.update('none'); // Update without full animation to be smooth

@@ -19,32 +19,41 @@ class MqttPublishService
         try {
             $message = json_encode($payload);
             
-            // Using public tunnel as fallback specifically for Coolify containers
-            // If MQTT_HOST is local (192.168.x.x) and unreachable by Docker, we force use of the public tunnel
             $host = config('services.mqtt.host');
             $port = config('services.mqtt.port', 1883); // TCP port
-            
-            // In Production (Coolify), local IPs often fail. Fallback to public domain if configured for local.
-            if (str_starts_with($host, '192.168.') && env('APP_ENV') === 'production') {
-                $host = str_replace('wss://', '', str_replace('ws://', '', 'mqtt.kurobapak.site'));
-            }
 
             $clientId = config('services.mqtt.client_id', 'LaravelCmd') . '-' . uniqid();
             $username = config('services.mqtt.username');
             $password = config('services.mqtt.password');
             
-            $mqtt = new MqttClient($host, $port, $clientId);
-            
             $settings = (new ConnectionSettings)
                 ->setUsername($username)
                 ->setPassword($password)
-                ->setConnectTimeout(5);
+                ->setConnectTimeout(3); // Short timeout for faster fallback
 
-            $mqtt->connect($settings, true);
+            try {
+                // 1. Try Primary Host Connection
+                $mqtt = new MqttClient($host, $port, $clientId);
+                $mqtt->connect($settings, true);
+            } catch (\Exception $e) {
+                Log::warning("Primary MQTT Connection Failed ({$host}). Attempting fallback to mqtt.kurobapak.site.", ['error' => $e->getMessage()]);
+                
+                // 2. Try Fallback Public Tunnel
+                if ($host !== 'mqtt.kurobapak.site') {
+                    $fallbackHost = 'mqtt.kurobapak.site';
+                    $fallbackPort = 1883;
+                    $mqtt = new MqttClient($fallbackHost, $fallbackPort, $clientId);
+                    $mqtt->connect($settings, true);
+                    $host = $fallbackHost; // Update host variable for success log
+                } else {
+                    throw $e; // Re-throw if the primary WAS the fallback
+                }
+            }
+            
             $mqtt->publish($topic, $message, 0);
             $mqtt->disconnect();
             
-            Log::info("MQTT Publish SUCCESS to [$topic]: $message");
+            Log::info("MQTT Publish SUCCESS via [{$host}] to [$topic]: $message");
 
         } catch (\Exception $e) {
             Log::error("Failed to publish to MQTT: " . $e->getMessage(), [

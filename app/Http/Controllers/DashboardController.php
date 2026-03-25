@@ -8,6 +8,15 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $interval = request('interval', '10m');
+        $range = request('range', '-6h');
+
+        $allowedIntervals = ['5m', '10m', '15m', '30m', '1h'];
+        $allowedRanges = ['-1h', '-6h', '-12h', '-24h', '-7d'];
+
+        if (!in_array($interval, $allowedIntervals)) $interval = '10m';
+        if (!in_array($range, $allowedRanges)) $range = '-6h';
+
         $historicalData = [
             'labels' => [],
             'ph' => [],
@@ -30,13 +39,13 @@ class DashboardController extends Controller
 
                 $queryApi = $client->createQueryApi();
 
-                // Fetch last 6 hours, downsampled to 15m intervals
+                // Fetch dynamic range, downsampled to dynamic intervals
                 $query = "
                   from(bucket: \"{$bucket}\")
-                    |> range(start: -6h)
+                    |> range(start: {$range})
                     |> filter(fn: (r) => r[\"_measurement\"] == \"water_quality\")
                     |> filter(fn: (r) => r[\"_field\"] == \"ph\" or r[\"_field\"] == \"tds\" or r[\"_field\"] == \"water_temp\" or r[\"_field\"] == \"turbidity\" or r[\"_field\"] == \"air_temp\" or r[\"_field\"] == \"humidity\" or r[\"_field\"] == \"light\")
-                    |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+                    |> aggregateWindow(every: {$interval}, fn: mean, createEmpty: false)
                     |> yield(name: \"mean\")
                 ";
 
@@ -91,6 +100,6 @@ class DashboardController extends Controller
             ]
         );
 
-        return view('dashboard', compact('historicalData', 'setting'));
+        return view('dashboard', compact('historicalData', 'setting', 'interval', 'range'));
     }
 }
