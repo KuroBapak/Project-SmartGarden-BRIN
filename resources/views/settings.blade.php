@@ -30,7 +30,7 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Automation Parameters</h3>
-                        <form method="POST" action="{{ route('settings.config') }}">
+                        <form method="POST" action="{{ route('settings.config') }}" id="configForm">
                             @csrf
                             <input type="hidden" name="device_id" value="{{ $setting->device_id }}">
 
@@ -56,7 +56,7 @@
                             </div>
 
                             <div class="flex items-center justify-end mt-4">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                <button type="submit" id="saveConfigBtn" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50 transition ease-in-out duration-150">
                                     Save & Sync Config
                                 </button>
                             </div>
@@ -112,34 +112,85 @@
         </div>
     </div>
 
-    <!-- AJAX Script for Manual Pump -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script>
-        function triggerPump(targetPump, durationMs) {
-            fetch("{{ route('settings.pump') }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify({
-                    device_id: "{{ $setting->device_id }}",
+        document.addEventListener('DOMContentLoaded', function () {
+            const mqttOptions = {
+                keepalive: 60,
+                clientId: '{{ config("services.mqtt.client_id") }}' + '-cmd-' + Math.random().toString(16).substr(2, 6),
+                protocolId: 'MQTT',
+                protocolVersion: 4,
+                clean: true,
+                reconnectPeriod: 1000,
+                connectTimeout: 30 * 1000,
+                username: '{{ config("services.mqtt.username") }}',
+                password: '{{ config("services.mqtt.password") }}',
+            };
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const mqttHost = '{{ config("services.mqtt.host") }}';
+            const mqttPort = window.location.protocol === 'https:' ? '' : ':{{ config("services.mqtt.ws_port") }}';
+            const brokerUrl = `${protocol}//${mqttHost}${mqttPort}/mqtt`;
+            
+            const client = mqtt.connect(brokerUrl, mqttOptions);
+            const pubTopic = `brin/water/{{ $setting->device_id }}/down/cmd`;
+
+            client.on('connect', function () {
+                console.log('Connected to MQTT via WebSockets for Commands!');
+            });
+
+            // Handle Manual Pump Trigger locally via WS
+            window.triggerPump = function(targetPump, durationMs) {
+                if (!client.connected) {
+                    alert("MQTT Not Connected! Menunggu koneksi WebSocket...");
+                    return;
+                }
+                const payload = {
+                    action: 'manual_pump',
                     target: targetPump,
                     duration: durationMs
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    alert('Command Sent: ' + data.message);
-                } else {
-                    alert('Error sending command');
+                };
+                client.publish(pubTopic, JSON.stringify(payload), {qos: 0}, function(err) {
+                    if(!err) {
+                        alert(`Command terkirim via WebSockets ke ${targetPump} (${durationMs}ms)`);
+                    } else {
+                        alert(`Gagal kirim via WebSockets`);
+                    }
+                });
+            };
+
+            // Intercept Config Form to push MQTT before standard POST save
+            const configForm = document.getElementById('configForm');
+            configForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // Stop default submit
+                
+                if (!client.connected) {
+                    alert("MQTT Not Connected! Menunggu koneksi WebSocket...");
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Failed to send command.");
+
+                document.getElementById('saveConfigBtn').disabled = true;
+                document.getElementById('saveConfigBtn').innerText = 'Syncing...';
+
+                const cfgPayload = {
+                    action: 'set_config',
+                    interval: parseInt(document.getElementById('interval_ms').value),
+                    min_ph: parseFloat(document.getElementById('min_ph').value),
+                    min_tds: parseFloat(document.getElementById('min_tds').value),
+                    max_turb: parseFloat(document.getElementById('max_turb').value),
+                };
+
+                client.publish(pubTopic, JSON.stringify(cfgPayload), {qos: 0}, function(err) {
+                    if(!err) {
+                        console.log('Config synced via WebSockets. Saving to DB...');
+                        configForm.submit(); // Continue the standard framework POST
+                    } else {
+                        alert('Sync gagal via WebSockets!');
+                        document.getElementById('saveConfigBtn').disabled = false;
+                        document.getElementById('saveConfigBtn').innerText = 'Save & Sync Config';
+                    }
+                });
             });
-        }
+        });
     </script>
 </x-app-layout>
