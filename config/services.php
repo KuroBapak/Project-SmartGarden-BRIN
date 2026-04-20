@@ -37,8 +37,7 @@ return [
 
     'mqtt' => [
         'host' => env('MQTT_HOST', '192.168.50.100'),
-        'port' => env('MQTT_PORT', '1883'),
-        'ws_port' => env('MQTT_WS_PORT', '8083'),
+        'ws_port' => env('MQTT_WS_PORT', ''),
         'client_id' => env('MQTT_CLIENT_ID', 'WebClient'),
         'username' => env('MQTT_AUTH_USERNAME', ''),
         'password' => env('MQTT_AUTH_PASSWORD', ''),

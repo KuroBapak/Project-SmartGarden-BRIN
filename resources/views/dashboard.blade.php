@@ -280,15 +280,14 @@
                 password: '{{ config("services.mqtt.password") }}',
             };
 
-            // Determine connection protocol: wss (Secure) for Cloudflare/HTTPS, ws for local HTTP
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            
-            // PENTING: Javascript Frontend BUKAN konek ke Port 1883 (TCP), tapi WAJIB Port 8083 (WebSocket)
-            // Pakai standar ENV lu MQTT_HOST
+            // MQTT WebSocket broker URL (controlled via .env)
+            // MQTT_WS_PORT diisi (e.g. 8083) → ws://host:port/mqtt (lokal)
+            // MQTT_WS_PORT kosong            → wss://host/mqtt (online via tunnel)
             const mqttHost = '{{ config("services.mqtt.host") }}';
-            const mqttPort = window.location.protocol === 'https:' ? '' : ':{{ config("services.mqtt.ws_port") }}';
-            
-            const brokerUrl = `${protocol}//${mqttHost}${mqttPort}/mqtt`;
+            const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
+            const brokerUrl = mqttWsPort
+                ? `ws://${mqttHost}:${mqttWsPort}/mqtt`
+                : `wss://${mqttHost}/mqtt`;
             
             const mqttStatus = document.getElementById('mqtt_status');
             

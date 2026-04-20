@@ -127,10 +127,12 @@
                 password: '{{ config("services.mqtt.password") }}',
             };
 
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // MQTT WebSocket broker URL (controlled via .env)
             const mqttHost = '{{ config("services.mqtt.host") }}';
-            const mqttPort = window.location.protocol === 'https:' ? '' : ':{{ config("services.mqtt.ws_port") }}';
-            const brokerUrl = `${protocol}//${mqttHost}${mqttPort}/mqtt`;
+            const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
+            const brokerUrl = mqttWsPort
+                ? `ws://${mqttHost}:${mqttWsPort}/mqtt`
+                : `wss://${mqttHost}/mqtt`;
             
             const client = mqtt.connect(brokerUrl, mqttOptions);
             const pubTopic = `brin/water/{{ $setting->device_id }}/down/cmd`;
