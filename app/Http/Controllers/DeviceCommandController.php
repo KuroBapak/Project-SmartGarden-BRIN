@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DeviceSetting;
+use App\Models\PlantPreset;
 use App\Services\MqttPublishService;
 use Illuminate\Support\Facades\Log;
 
@@ -26,11 +27,14 @@ class DeviceCommandController extends Controller
                 'interval_ms' => 60000,
                 'min_ph' => 6.5,
                 'min_tds' => 300.0,
-                'max_turb' => 25.0
+                'max_turb' => 25.0,
+                'max_temp' => 30.0,
             ]
         );
 
-        return view('settings', compact('setting'));
+        $presets = PlantPreset::orderBy('name')->get();
+
+        return view('settings', compact('setting', 'presets'));
     }
 
     public function updateConfig(Request $request)
@@ -41,6 +45,7 @@ class DeviceCommandController extends Controller
             'min_ph' => 'required|numeric',
             'min_tds' => 'required|numeric',
             'max_turb' => 'required|numeric',
+            'max_temp' => 'required|numeric',
         ]);
 
         DeviceSetting::updateOrCreate(
@@ -49,7 +54,8 @@ class DeviceCommandController extends Controller
                 'interval_ms' => $validated['interval_ms'],
                 'min_ph' => $validated['min_ph'],
                 'min_tds' => $validated['min_tds'],
-                'max_turb' => $validated['max_turb']
+                'max_turb' => $validated['max_turb'],
+                'max_temp' => $validated['max_temp'],
             ]
         );
 
@@ -58,7 +64,8 @@ class DeviceCommandController extends Controller
             'interval' => (int) $validated['interval_ms'],
             'min_ph' => (float) $validated['min_ph'],
             'min_tds' => (float) $validated['min_tds'],
-            'max_turb' => (float) $validated['max_turb']
+            'max_turb' => (float) $validated['max_turb'],
+            'max_temp' => (float) $validated['max_temp'],
         ];
 
         $this->mqtt->sendCommand($validated['device_id'], $payload);
@@ -85,3 +92,4 @@ class DeviceCommandController extends Controller
         return response()->json(['status' => 'success', 'message' => "Manual override sent for {$validated['target']}"]);
     }
 }
+

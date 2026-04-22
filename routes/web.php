@@ -22,6 +22,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [\App\Http\Controllers\DeviceCommandController::class, 'settingsView'])->name('settings');
     Route::post('/settings/config', [\App\Http\Controllers\DeviceCommandController::class, 'updateConfig'])->name('settings.config');
     Route::post('/settings/pump', [\App\Http\Controllers\DeviceCommandController::class, 'manualOverride'])->name('settings.pump');
+
+    // Plant Preset CRUD routes
+    Route::post('/plant-presets', [\App\Http\Controllers\PlantPresetController::class, 'store'])->name('plant-presets.store');
+    Route::put('/plant-presets/{plantPreset}', [\App\Http\Controllers\PlantPresetController::class, 'update'])->name('plant-presets.update');
+    Route::delete('/plant-presets/{plantPreset}', [\App\Http\Controllers\PlantPresetController::class, 'destroy'])->name('plant-presets.destroy');
 });
 
 require __DIR__.'/auth.php';
