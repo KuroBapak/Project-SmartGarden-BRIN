@@ -22,6 +22,7 @@ class DashboardController extends Controller
             'ph' => [],
             'tds' => [],
             'water_temp' => [],
+            'rssi' => [],
         ];
 
         $url = config('services.influxdb.url');
@@ -44,7 +45,7 @@ class DashboardController extends Controller
                   from(bucket: \"{$bucket}\")
                     |> range(start: {$range})
                     |> filter(fn: (r) => r[\"_measurement\"] == \"water_quality\")
-                    |> filter(fn: (r) => r[\"_field\"] == \"ph\" or r[\"_field\"] == \"tds\" or r[\"_field\"] == \"water_temp\" or r[\"_field\"] == \"turbidity\" or r[\"_field\"] == \"air_temp\" or r[\"_field\"] == \"humidity\" or r[\"_field\"] == \"light\")
+                    |> filter(fn: (r) => r[\"_field\"] == \"ph\" or r[\"_field\"] == \"tds\" or r[\"_field\"] == \"water_temp\" or r[\"_field\"] == \"turbidity\" or r[\"_field\"] == \"air_temp\" or r[\"_field\"] == \"humidity\" or r[\"_field\"] == \"light\" or r[\"_field\"] == \"rssi\")
                     |> aggregateWindow(every: {$interval}, fn: mean, createEmpty: false)
                     |> yield(name: \"mean\")
                 ";
@@ -82,6 +83,7 @@ class DashboardController extends Controller
                     $historicalData['air_temp'][] = round((float)($fields['air_temp'] ?? 0), 1);
                     $historicalData['humidity'][] = round((float)($fields['humidity'] ?? 0), 0);
                     $historicalData['light'][] = round((float)($fields['light'] ?? 0), 0);
+                    $historicalData['rssi'][] = round((float)($fields['rssi'] ?? 0), 0);
                 }
 
             } catch (\Exception $e) {

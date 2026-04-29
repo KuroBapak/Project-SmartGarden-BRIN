@@ -26,6 +26,40 @@
         }
         .pump-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .pump-btn:active { transform: translateY(0); }
+        @keyframes fan-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fan-active {
+            animation: fan-spin 0.8s linear infinite;
+            opacity: 1 !important;
+        }
+        .pump-modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+        }
+        .pump-modal-backdrop.active { opacity: 1; pointer-events: auto; }
+        .pump-modal {
+            background: white; border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 380px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: scale(0.95); transition: transform 0.2s ease;
+        }
+        .pump-modal-backdrop.active .pump-modal { transform: scale(1); }
+        .unit-btn { transition: all 0.15s ease; }
+        .unit-btn.selected { background-color: #3b82f6; color: white; }
+        @keyframes pump-running-glow {
+            0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+            50% { box-shadow: 0 0 12px 4px rgba(34,197,94,0.35); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+        }
+        .pump-running {
+            animation: pump-running-glow 1.2s ease-in-out infinite;
+            pointer-events: none; opacity: 0.85;
+        }
+        .pump-running .pump-countdown {
+            display: inline-flex;
+        }
     </style>
 
     <div class="py-8">
@@ -78,36 +112,40 @@
                 </div>
             </div>
 
-            {{-- ═══════ ROW 2: SENSOR CARDS (classic style, improved) ═══════ --}}
-            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4">
-                {{-- Water Temp --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 border-blue-500">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Water Temp</div>
-                    <div class="mt-2 text-2xl font-bold text-gray-900" id="val_water_temp">-- °C</div>
-                </div>
-                {{-- Air Temp --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 border-red-500">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Air Temp</div>
-                    <div class="mt-2 text-2xl font-bold text-gray-900" id="val_air_temp">-- °C</div>
-                </div>
-                {{-- Humidity --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 border-cyan-500">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Humidity</div>
-                    <div class="mt-2 text-2xl font-bold text-gray-900" id="val_humidity">-- %</div>
-                </div>
-                {{-- Light Level --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-5 border-l-4 border-purple-500">
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Light Level</div>
-                    <div class="mt-2 text-2xl font-bold text-gray-900" id="val_light">-- %</div>
-                </div>
-            </div>
-
-            {{-- ═══════ ROW 3: WATER QUALITY + PUMP CONTROL ═══════ --}}
+            {{-- ═══════ ROW 2: MONITORING + WATER QUALITY + PUMP CONTROL ═══════ --}}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {{-- Water Quality Panel (2 col) --}}
+                {{-- Combined Monitoring + Water Quality Panel (2 col) --}}
                 <div class="lg:col-span-2 bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-5">
+                        {{-- Realtime Monitoring Section --}}
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Realtime Monitoring
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                            <div class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 border-l-4 border-l-blue-500">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Water Temp</div>
+                                <div class="mt-2 text-2xl font-bold text-gray-900" id="val_water_temp">-- °C</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 border-l-4 border-l-green-500">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">WiFi RSSI</div>
+                                <div class="mt-2 text-2xl font-bold text-gray-900" id="val_rssi">-- dBm</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 border-l-4 border-l-cyan-500">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Humidity</div>
+                                <div class="mt-2 text-2xl font-bold text-gray-900" id="val_humidity">-- %</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 border-l-4 border-l-purple-500">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Light Level</div>
+                                <div class="mt-2 text-2xl font-bold text-gray-900" id="val_light">-- %</div>
+                            </div>
+                        </div>
+
+                        {{-- Divider --}}
+                        <hr class="border-gray-100 mb-5">
+
+                        {{-- Water Quality & Automation Section --}}
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
@@ -119,7 +157,7 @@
                             </span>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             {{-- pH --}}
                             <div id="card_ph" class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-300">
                                 <div class="flex items-center justify-between mb-1">
@@ -147,6 +185,15 @@
                                 <p class="text-3xl font-bold text-gray-900" id="val_turbidity">--</p>
                                 <p id="status_turbidity" class="text-[11px] text-gray-400 mt-1">Target Max: {{ $setting->max_turb }}</p>
                             </div>
+                            {{-- Air Temp (with Fan pump animation) --}}
+                            <div id="card_air_temp" class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Air Temp</span>
+                                    <svg id="icon_pump_fan" class="w-5 h-5 text-red-500 opacity-0 transition-opacity fan-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg>
+                                </div>
+                                <p class="text-3xl font-bold text-gray-900" id="val_air_temp">-- <span class="text-sm font-medium text-gray-400">°C</span></p>
+                                <p id="status_air_temp" class="text-[11px] text-gray-400 mt-1">Target Max: {{ $setting->max_temp ?? 30 }} °C</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,17 +206,25 @@
                             Manual Override
                         </h3>
                         <div class="flex-1 flex flex-col justify-center space-y-3">
-                            <button onclick="triggerPump('ph', 5000)" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-green-600 text-white shadow-sm hover:bg-green-700 border border-green-700">
+                            <button id="btn_pump_ph" onclick="openPumpModal('ph', 'pH Pump', 'Injeksi Buffer')" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-green-600 text-white shadow-sm hover:bg-green-700 border border-green-700">
                                 <div><span class="text-sm font-bold">pH Pump</span><br><span class="text-[10px] text-green-200">Injeksi Buffer</span></div>
-                                <span class="bg-green-800 text-green-100 text-[10px] font-bold px-2 py-0.5 rounded">5s</span>
+                                <span class="pump-countdown hidden items-center gap-1 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg><span class="countdown-text"></span></span>
+                                <svg class="w-4 h-4 text-green-200 pump-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
-                            <button onclick="triggerPump('tds', 5000)" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-yellow-500 text-white shadow-sm hover:bg-yellow-600 border border-yellow-600">
+                            <button id="btn_pump_tds" onclick="openPumpModal('tds', 'TDS Pump', 'Injeksi AB Mix')" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-yellow-500 text-white shadow-sm hover:bg-yellow-600 border border-yellow-600">
                                 <div><span class="text-sm font-bold">TDS Pump</span><br><span class="text-[10px] text-yellow-100">Injeksi AB Mix</span></div>
-                                <span class="bg-yellow-700 text-yellow-100 text-[10px] font-bold px-2 py-0.5 rounded">5s</span>
+                                <span class="pump-countdown hidden items-center gap-1 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg><span class="countdown-text"></span></span>
+                                <svg class="w-4 h-4 text-yellow-100 pump-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
-                            <button onclick="triggerPump('water', 10000)" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 border border-blue-700">
+                            <button id="btn_pump_water" onclick="openPumpModal('water', 'Water Pump', 'Sirkulasi / Flush')" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 border border-blue-700">
                                 <div><span class="text-sm font-bold">Water Pump</span><br><span class="text-[10px] text-blue-200">Sirkulasi / Flush</span></div>
-                                <span class="bg-blue-800 text-blue-100 text-[10px] font-bold px-2 py-0.5 rounded">10s</span>
+                                <span class="pump-countdown hidden items-center gap-1 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg><span class="countdown-text"></span></span>
+                                <svg class="w-4 h-4 text-blue-200 pump-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button id="btn_pump_fan" onclick="openPumpModal('fan', 'Fan / Spray', 'Pendingin Udara')" class="pump-btn w-full flex items-center justify-between p-3.5 rounded-lg bg-purple-600 text-white shadow-sm hover:bg-purple-700 border border-purple-700">
+                                <div><span class="text-sm font-bold">Fan / Spray</span><br><span class="text-[10px] text-purple-200">Pendingin Udara</span></div>
+                                <span class="pump-countdown hidden items-center gap-1 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg><span class="countdown-text"></span></span>
+                                <svg class="w-4 h-4 text-purple-200 pump-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
                         </div>
                     </div>
@@ -261,6 +316,12 @@
                         label: 'Turbidity', data: rawData.turbidity,
                         borderColor: 'rgb(249, 115, 22)', tension: 0.3, yAxisID: 'y-percent',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
+                    },
+                    {
+                        label: 'RSSI (dBm)', data: rawData.rssi,
+                        borderColor: 'rgb(16, 185, 129)', tension: 0.3, yAxisID: 'y-rssi',
+                        borderDash: [5, 3],
+                        pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     }
                 ]
             };
@@ -271,6 +332,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false, spanGaps: false,
                     interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { align: 'center', labels: { padding: 14 } } },
                     elements: { point: { hitRadius: 10, hoverRadius: 4 } },
                     scales: {
                         x: {
@@ -293,6 +355,11 @@
                             type: 'linear', display: true, position: 'right',
                             title: { display: true, text: 'TDS (ppm)' },
                             suggestedMin: 0, suggestedMax: 1000,
+                            grid: { drawOnChartArea: false }
+                        },
+                        'y-rssi': {
+                            type: 'linear', display: false,
+                            suggestedMin: -100, suggestedMax: 0,
                             grid: { drawOnChartArea: false }
                         }
                     }
@@ -330,14 +397,99 @@
                 badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-gray-400"></span> Offline';
             });
 
-            // ─── 3. MANUAL PUMP TRIGGER ─────────────────────────────────────────────
-            window.triggerPump = function(targetPump, durationMs) {
-                if (!client.connected) { alert("MQTT Not Connected!"); return; }
-                const payload = { action: 'manual_pump', target: targetPump, duration: durationMs };
+            // ─── 3. MANUAL PUMP MODAL ──────────────────────────────────────────────
+            const pumpHistoryKey = (pump) => `pump_history_${pump}`;
+
+            function getPumpHistory(pump) {
+                try { return JSON.parse(localStorage.getItem(pumpHistoryKey(pump))) || null; }
+                catch { return null; }
+            }
+            function savePumpHistory(pump, val, unit) {
+                localStorage.setItem(pumpHistoryKey(pump), JSON.stringify({ val, unit }));
+            }
+
+            let currentPumpTarget = '';
+
+            window.openPumpModal = function(pump, title, subtitle) {
+                currentPumpTarget = pump;
+                document.getElementById('modal_pump_title').textContent = title;
+                document.getElementById('modal_pump_subtitle').textContent = subtitle;
+                document.getElementById('modal_duration_input').value = '';
+                // reset unit buttons
+                document.getElementById('unit_sec').classList.add('selected');
+                document.getElementById('unit_min').classList.remove('selected');
+                // show history
+                const hist = getPumpHistory(pump);
+                const histEl = document.getElementById('modal_history_section');
+                if (hist) {
+                    histEl.classList.remove('hidden');
+                    const label = hist.unit === 'min' ? 'menit' : 'detik';
+                    document.getElementById('modal_history_text').textContent = `${hist.val} ${label}`;
+                } else {
+                    histEl.classList.add('hidden');
+                }
+                document.getElementById('pump_modal_backdrop').classList.add('active');
+            };
+
+            window.closePumpModal = function() {
+                document.getElementById('pump_modal_backdrop').classList.remove('active');
+            };
+
+            window.selectUnit = function(unit) {
+                if (unit === 'sec') {
+                    document.getElementById('unit_sec').classList.add('selected');
+                    document.getElementById('unit_min').classList.remove('selected');
+                } else {
+                    document.getElementById('unit_min').classList.add('selected');
+                    document.getElementById('unit_sec').classList.remove('selected');
+                }
+            };
+
+            window.useHistory = function() {
+                const hist = getPumpHistory(currentPumpTarget);
+                if (hist) {
+                    document.getElementById('modal_duration_input').value = hist.val;
+                    selectUnit(hist.unit === 'min' ? 'min' : 'sec');
+                }
+            };
+
+            function startPumpAnimation(pump, durationMs) {
+                const btn = document.getElementById(`btn_pump_${pump}`);
+                if (!btn) return;
+                const arrow = btn.querySelector('.pump-arrow');
+                if (arrow) arrow.classList.add('hidden');
+                btn.classList.add('pump-running');
+                let remaining = Math.ceil(durationMs / 1000);
+                const countdownEl = btn.querySelector('.countdown-text');
+                countdownEl.textContent = `${remaining}s`;
+                const interval = setInterval(() => {
+                    remaining--;
+                    if (remaining <= 0) {
+                        clearInterval(interval);
+                        btn.classList.remove('pump-running');
+                        if (arrow) arrow.classList.remove('hidden');
+                        countdownEl.textContent = '';
+                    } else {
+                        countdownEl.textContent = `${remaining}s`;
+                    }
+                }, 1000);
+            }
+
+            window.confirmPump = function() {
+                const val = parseInt(document.getElementById('modal_duration_input').value);
+                if (!val || val <= 0) { alert('Masukkan durasi yang valid!'); return; }
+                if (!client.connected) { alert('MQTT Not Connected!'); closePumpModal(); return; }
+                const isMin = document.getElementById('unit_min').classList.contains('selected');
+                const unit = isMin ? 'min' : 'sec';
+                const durationMs = isMin ? val * 60000 : val * 1000;
+                savePumpHistory(currentPumpTarget, val, unit);
+                const payload = { action: 'manual_pump', target: currentPumpTarget, duration: durationMs };
+                const pumpTarget = currentPumpTarget;
                 client.publish(pubTopic, JSON.stringify(payload), {qos: 0}, function(err) {
-                    if(!err) alert(`Command terkirim ke ${targetPump.toUpperCase()} (${durationMs}ms)`);
-                    else alert('Gagal kirim command');
+                    if (err) alert('Gagal kirim command');
                 });
+                closePumpModal();
+                startPumpAnimation(pumpTarget, durationMs);
             };
 
             // ─── 4. INCOMING TELEMETRY ──────────────────────────────────────────────
@@ -360,7 +512,7 @@
 
                     // Simple sensors
                     if (p.water_temp !== undefined) document.getElementById('val_water_temp').textContent = parseFloat(p.water_temp).toFixed(1) + ' °C';
-                    if (p.air_temp !== undefined) document.getElementById('val_air_temp').textContent = parseFloat(p.air_temp).toFixed(1) + ' °C';
+                    if (p.rssi !== undefined) document.getElementById('val_rssi').textContent = parseInt(p.rssi) + ' dBm';
                     if (p.humidity !== undefined) document.getElementById('val_humidity').textContent = parseInt(p.humidity) + ' %';
                     if (p.light !== undefined) document.getElementById('val_light').textContent = parseInt(p.light) + ' %';
 
@@ -417,6 +569,23 @@
                         }
                     }
 
+                    // Air Temp (Fan automation)
+                    if (p.air_temp !== undefined) {
+                        let v = parseFloat(p.air_temp);
+                        document.getElementById('val_air_temp').innerHTML = `${v.toFixed(1)} <span class="text-sm font-medium text-gray-400">°C</span>`;
+                        let card = document.getElementById('card_air_temp');
+                        let icon = document.getElementById('icon_pump_fan');
+                        let status = document.getElementById('status_air_temp');
+                        if (v > targets.temp) {
+                            card.classList.add('pump-active-row'); icon.classList.add('fan-active');
+                            status.innerHTML = '⚠️ Fan Aktif'; status.className = 'text-[11px] text-red-600 font-bold mt-1';
+                            hasAlert = true;
+                        } else {
+                            card.classList.remove('pump-active-row'); icon.classList.remove('fan-active');
+                            status.innerHTML = `Target Max: ${targets.temp} °C`; status.className = 'text-[11px] text-gray-400 mt-1';
+                        }
+                    }
+
                     // Health dot
                     const dot = document.getElementById('water_health_dot');
                     const ping = document.getElementById('water_health_ping');
@@ -444,6 +613,7 @@
                     if (p.light !== undefined) push(4, p.light);
                     if (p.tds !== undefined) push(5, p.tds);
                     if (p.turbidity !== undefined) push(6, p.turbidity);
+                    if (p.rssi !== undefined) push(7, p.rssi);
 
                     if (myChart.data.labels.length > 200) {
                         myChart.data.labels.shift();
@@ -457,4 +627,44 @@
             });
         });
     </script>
+
+    {{-- ═══════ PUMP MODAL ═══════ --}}
+    <div id="pump_modal_backdrop" class="pump-modal-backdrop" onclick="if(event.target===this) closePumpModal()">
+        <div class="pump-modal">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h4 id="modal_pump_title" class="text-lg font-bold text-gray-900">Pump</h4>
+                    <p id="modal_pump_subtitle" class="text-xs text-gray-400">-</p>
+                </div>
+                <button onclick="closePumpModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Durasi</label>
+            <div class="flex items-center gap-2 mb-3">
+                <input id="modal_duration_input" type="number" min="1" max="999" placeholder="Contoh: 6"
+                    class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-lg font-bold text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button id="unit_sec" onclick="selectUnit('sec')" class="unit-btn flex-1 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 selected">Detik</button>
+                <button id="unit_min" onclick="selectUnit('min')" class="unit-btn flex-1 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600">Menit</button>
+            </div>
+
+            <div id="modal_history_section" class="hidden mb-4">
+                <p class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Terakhir digunakan</p>
+                <button onclick="useHistory()" class="w-full flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-all group">
+                    <span id="modal_history_text" class="text-sm font-medium text-gray-700 group-hover:text-blue-700">-</span>
+                    <span class="text-[10px] font-semibold text-gray-400 group-hover:text-blue-500 uppercase">Pakai</span>
+                </button>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closePumpModal()" class="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Batal</button>
+                <button onclick="confirmPump()" class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 shadow-sm transition-colors">Kirim</button>
+            </div>
+        </div>
+    </div>
+
 </x-app-layout>
