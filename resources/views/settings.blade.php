@@ -101,6 +101,7 @@
                                 <input type="hidden" name="min_tds" :value="formData.min_tds">
                                 <input type="hidden" name="max_turb" :value="formData.max_turb">
                                 <input type="hidden" name="max_temp" :value="formData.max_temp">
+                                <input type="hidden" id="active_preset_name" :value="activePresetName || 'default'">
 
                                 <div class="mb-5">
                                     <label for="interval_ms" class="block font-medium text-sm text-gray-700 mb-1">Telemetry Interval</label>
@@ -510,10 +511,9 @@
                 btn.disabled = true;
                 btn.innerHTML = '<svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Syncing...';
 
-                const alpineData = Alpine.$data(document.querySelector('[x-data="settingsApp()"]'));
                 const cfgPayload = {
                     action: 'set_config',
-                    preset: alpineData.activePresetName || 'default',
+                    preset: document.getElementById('active_preset_name').value,
                     interval: parseInt(document.getElementById('interval_ms').value),
                     min_ph: parseFloat(document.querySelector('[x-model="formData.min_ph"]').value),
                     min_tds: parseFloat(document.querySelector('[x-model="formData.min_tds"]').value),
