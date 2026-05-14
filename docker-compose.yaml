@@ -1,6 +1,7 @@
 services:
   web:
     image: ghcr.io/kurobapak/project-smartgarden-brin:latest
+    pull_policy: always
     expose:
       - "8000"
     networks:
