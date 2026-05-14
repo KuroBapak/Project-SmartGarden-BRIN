@@ -1,5 +1,5 @@
 services:
   web:
     image: ghcr.io/kurobapak/project-smartgarden-brin:latest
-    expose:
-      - "8000"
+    ports:
+      - "8080:8080"
