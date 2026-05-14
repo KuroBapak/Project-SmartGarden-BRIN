@@ -2,4 +2,4 @@ services:
   web:
     image: ghcr.io/kurobapak/project-smartgarden-brin:latest
     ports:
-      - "8080:8080"
+      - "8005:8000"
