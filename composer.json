@@ -9,8 +9,7 @@
         "php": "^8.2",
         "influxdata/influxdb-client-php": "^3.8",
         "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1",
-        "php-mqtt/client": "^2.3"
+        "laravel/tinker": "^2.10.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

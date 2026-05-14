@@ -5,17 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\DeviceSetting;
 use App\Models\PlantPreset;
-use App\Services\MqttPublishService;
-use Illuminate\Support\Facades\Log;
 
 class DeviceCommandController extends Controller
 {
-    protected $mqtt;
 
-    public function __construct(MqttPublishService $mqtt)
-    {
-        $this->mqtt = $mqtt;
-    }
 
     public function settingsView()
     {
@@ -59,16 +52,8 @@ class DeviceCommandController extends Controller
             ]
         );
 
-        $payload = [
-            'action' => 'set_config',
-            'interval' => (int) $validated['interval_ms'],
-            'min_ph' => (float) $validated['min_ph'],
-            'min_tds' => (float) $validated['min_tds'],
-            'max_turb' => (float) $validated['max_turb'],
-            'max_temp' => (float) $validated['max_temp'],
-        ];
-
-        $this->mqtt->sendCommand($validated['device_id'], $payload);
+        // NOTE: MQTT publish is handled by the frontend via mqtt.js over WebSocket.
+        // See resources/views/settings.blade.php for the actual MQTT publish logic.
 
         return redirect()->back()->with('status', 'config-updated');
     }
@@ -81,13 +66,8 @@ class DeviceCommandController extends Controller
             'duration' => 'required|integer|min:1000|max:60000'
         ]);
 
-        $payload = [
-            'action' => 'manual_pump',
-            'target' => $validated['target'],
-            'duration' => (int) $validated['duration']
-        ];
-
-        $this->mqtt->sendCommand($validated['device_id'], $payload);
+        // NOTE: MQTT publish is handled by the frontend via mqtt.js over WebSocket.
+        // See resources/views/dashboard.blade.php for the actual MQTT publish logic.
 
         return response()->json(['status' => 'success', 'message' => "Manual override sent for {$validated['target']}"]);
     }
