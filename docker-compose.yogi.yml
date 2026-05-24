@@ -1,7 +1,7 @@
 # =============================================================
-# SmartGarden BRIN — Docker Compose (Production)
+# SmartGarden BRIN — Docker Compose (Pak Yoga Deployment)
 # 3 services: Laravel Dashboard, MySQL, AI Server
-# Port range: 7000-7010 (as requested by Pak Yoga)
+# Port range: 7000-7010
 # =============================================================
 
 services:
@@ -10,17 +10,14 @@ services:
     image: mysql:8.0
     container_name: smartgarden-db
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-smartgarden_root_2026}
-      MYSQL_DATABASE: ${DB_DATABASE:-smartgarden_brin}
-      MYSQL_USER: ${DB_USERNAME:-smartgarden}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-smartgarden_secret_2026}
+    env_file:
+      - .env
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - smartgarden
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-smartgarden_root_2026}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-smartgarden_root_2026}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,28 +27,22 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # MySQL NOT exposed to host — internal only for security
+    ports:
+      - "${DB_PORT_HOST:-7002}:3306"
+    # MySQL exposed to host on 7002 for debugging/backup purposes
 
-  # ─── Laravel Dashboard (Nginx Unit + PHP 8.3) ──────────────
+    # ─── Laravel Dashboard (Nginx Unit + PHP 8.3) ──────────────
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB (Tanpa Build Ulang)
+    image: ghcr.io/kurobapak/project-smartgarden-brin:latest
+    pull_policy: always
     container_name: smartgarden-app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-7000}:8000"
+    # Menggunakan shared env file untuk semua credentials
     env_file:
-      - .env.production
-    environment:
-      # Override DB connection to use Docker internal network
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-smartgarden_brin}
-      DB_USERNAME: ${DB_USERNAME:-smartgarden}
-      DB_PASSWORD: ${DB_PASSWORD:-smartgarden_secret_2026}
-      # AI Server internal URL (Docker network, not exposed port)
-      AI_SERVER_URL: http://ai-server:8001
+      - .env
     volumes:
       - storage_data:/var/www/html/storage
     depends_on:
@@ -67,18 +58,16 @@ services:
 
   # ─── AI Server (FastAPI + YOLO) ─────────────────────────────
   ai-server:
-    build:
-      context: ./AIServer
-      dockerfile: Dockerfile
+    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB
+    image: ghcr.io/kurobapak/project-smartgarden-brin-ai:latest
+    pull_policy: always
     container_name: smartgarden-ai
     restart: unless-stopped
     ports:
       - "${AI_PORT:-7001}:8001"
+    # Menggunakan shared env file yang sama
     env_file:
-      - ./AIServer/.env.production
-    environment:
-      # Dashboard URL uses Docker internal network
-      DASHBOARD_URL: http://app:8000
+      - .env
     depends_on:
       - app
     networks:

@@ -24,8 +24,8 @@ BMKG_ADM4           = os.getenv("BMKG_ADM4")
 MQTT_HOST           = os.getenv("MQTT_HOST")
 MQTT_PORT           = int(os.getenv("MQTT_PORT") or "1883")
 MQTT_WS_PORT        = os.getenv("MQTT_WS_PORT")
-MQTT_USERNAME       = os.getenv("MQTT_USERNAME")
-MQTT_PASSWORD       = os.getenv("MQTT_PASSWORD")
+MQTT_USERNAME       = os.getenv("MQTT_AUTH_USERNAME")
+MQTT_PASSWORD       = os.getenv("MQTT_AUTH_PASSWORD")
 
 # Scheduler
 ANALYSIS_INTERVAL   = int(os.getenv("ANALYSIS_INTERVAL"))
