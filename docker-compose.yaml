@@ -1,0 +1,32 @@
+# =============================================================
+# SmartGarden BRIN — Docker Compose (Server Kurobapak / Coolify)
+# Web (Laravel Dashboard) and AI Server (FastAPI + YOLO)
+# Database is handled externally by Coolify.
+# =============================================================
+
+services:
+  web:
+    image: ghcr.io/kurobapak/project-smartgarden-brin:latest
+    pull_policy: always
+    expose:
+      - "8000"
+    networks:
+      - coolify
+    environment:
+      # AI Server internal URL within Coolify network
+      AI_SERVER_URL: http://ai-server:8001
+
+  ai-server:
+    image: ghcr.io/kurobapak/project-smartgarden-brin-ai:latest
+    pull_policy: always
+    expose:
+      - "8001"
+    networks:
+      - coolify
+    environment:
+      # Dashboard URL within Coolify network
+      DASHBOARD_URL: http://web:8000
+
+networks:
+  coolify:
+    external: true

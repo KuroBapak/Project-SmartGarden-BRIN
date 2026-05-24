@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
+ultralytics
+opencv-python
+influxdb-client
+apscheduler
+paho-mqtt
+Pillow
+python-multipart

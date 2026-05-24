@@ -1,0 +1,30 @@
+.git
+.github
+node_modules
+vendor
+.env
+.env.backup
+.env.production
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests
+phpunit.xml
+.editorconfig
+README.md
+
+# AI Server (separate build context)
+AIServer/
+docker-compose.yml
+
+# Arduino/ESP32 files
+*.ino
+
+# Loose Python scripts (not part of Laravel)
+laptop_*.py
+raspi_*.py
+plant_disease_scanner.py
+
+# YOLO model (in AI Server context only)
+plant_disease_model/

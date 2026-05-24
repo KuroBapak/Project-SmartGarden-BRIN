@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.env.backup
+.git
+.gitignore
+requirements_AMD.txt
+models/*.zip
