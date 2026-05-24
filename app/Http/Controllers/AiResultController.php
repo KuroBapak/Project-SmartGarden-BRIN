@@ -179,10 +179,10 @@ class AiResultController extends Controller
             'timestamp'           => $latest->created_at->toIso8601String(),
             'timestamp_formatted' => $latest->created_at->format('d M Y, H:i:s'),
             'image'               => $latest->image_path
-                ? Storage::url($latest->image_path)
+                ? '/storage/' . $latest->image_path
                 : null,
             'image_original'      => $latest->image_original_path
-                ? Storage::url($latest->image_original_path)
+                ? '/storage/' . $latest->image_original_path
                 : null,
             'scan_source'         => $latest->scan_source,
         ]);
