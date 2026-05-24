@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/ai/energy-analysis',   // AI Server push (uses X-API-Key)
             'api/ai/plant-scan',        // AI Server push (uses X-API-Key)
+            'api/scan/upload',          // Proxy for Raspi uploads
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -48,4 +48,21 @@ Route::middleware(\App\Http\Middleware\ValidateAiApiKey::class)->group(function 
     Route::post('/api/ai/plant-scan', [AiResultController::class, 'storePlantScan'])->name('api.ai.plant-scan.store');
 });
 
+// ── Proxy: Forward Raspberry Pi photo uploads directly to internal AI Server ──
+Route::post('/api/scan/upload', function (\Illuminate\Http\Request $request) {
+    if (!$request->hasFile('file')) {
+        return response()->json(['error' => 'No file uploaded'], 400);
+    }
+    
+    $file = $request->file('file');
+    $response = \Illuminate\Support\Facades\Http::timeout(60)->withHeaders([
+        'x-api-key' => $request->header('x-api-key')
+    ])->attach(
+        'file', file_get_contents($file->path()), $file->getClientOriginalName()
+    )->post(env('AI_SERVER_URL') . '/api/scan/upload');
+
+    return response($response->body(), $response->status())
+        ->header('Content-Type', $response->header('Content-Type'));
+});
+
 require __DIR__.'/auth.php';
