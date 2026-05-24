@@ -5,7 +5,7 @@
 # =============================================================
 
 services:
-  web:
+  smartgarden-web:
     image: ghcr.io/kurobapak/project-smartgarden-brin:latest
     pull_policy: always
     expose:
@@ -16,9 +16,9 @@ services:
       - .env
     environment:
       # AI Server internal URL within Coolify network
-      AI_SERVER_URL: http://ai-server:8001
+      AI_SERVER_URL: http://smartgarden-ai:8001
 
-  ai-server:
+  smartgarden-ai:
     image: ghcr.io/kurobapak/project-smartgarden-brin-ai:latest
     pull_policy: always
     expose:
@@ -29,7 +29,7 @@ services:
       - .env
     environment:
       # Dashboard URL within Coolify network
-      DASHBOARD_URL: http://web:8000
+      DASHBOARD_URL: http://smartgarden-web:8000
 
 networks:
   coolify:
