@@ -12,6 +12,8 @@ services:
       - "8000"
     networks:
       - coolify
+    env_file:
+      - .env
     environment:
       # AI Server internal URL within Coolify network
       AI_SERVER_URL: http://ai-server:8001
@@ -23,6 +25,8 @@ services:
       - "8001"
     networks:
       - coolify
+    env_file:
+      - .env
     environment:
       # Dashboard URL within Coolify network
       DASHBOARD_URL: http://web:8000
