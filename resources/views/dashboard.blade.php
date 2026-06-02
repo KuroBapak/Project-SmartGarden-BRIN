@@ -964,8 +964,26 @@
                         netEl.className = `text-sm font-bold ${np >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
                         const eh = data.endurance_hours;
                         const endEl = document.getElementById('ai_endurance');
-                        if (eh === null || eh > 9999) { endEl.textContent = '∞ (Surplus)'; endEl.className = 'text-sm font-bold text-emerald-600'; }
-                        else { endEl.textContent = `${parseFloat(eh).toFixed(1)} Jam`; endEl.className = `text-sm font-bold ${eh > 48 ? 'text-emerald-600' : eh > 12 ? 'text-amber-600' : 'text-red-600'}`; }
+                        const ttf = data.time_to_full;
+                        const tte = data.time_to_empty;
+
+                        if (data.net_power >= 0 && ttf !== null) {
+                            // Charging → show time to full
+                            endEl.textContent = `~${parseFloat(ttf).toFixed(1)} Jam → Penuh`;
+                            endEl.className = 'text-sm font-bold text-emerald-600';
+                        } else if (data.net_power < 0 && tte !== null) {
+                            // Discharging → show time to empty
+                            endEl.textContent = `${parseFloat(tte).toFixed(1)} Jam`;
+                            endEl.className = `text-sm font-bold ${tte > 48 ? 'text-emerald-600' : tte > 12 ? 'text-amber-600' : 'text-red-600'}`;
+                        } else if (eh !== null && eh > 0) {
+                            // Fallback to endurance_hours
+                            endEl.textContent = `${parseFloat(eh).toFixed(1)} Jam`;
+                            endEl.className = `text-sm font-bold ${eh > 48 ? 'text-emerald-600' : eh > 12 ? 'text-amber-600' : 'text-red-600'}`;
+                        } else {
+                            // Battery full or no load
+                            endEl.textContent = '✅ Stabil';
+                            endEl.className = 'text-sm font-bold text-emerald-600';
+                        }
                         if (data.solar_forecast !== null) document.getElementById('ai_solar_forecast').textContent = `~${parseFloat(data.solar_forecast).toFixed(1)} W`;
                         const sc = document.getElementById('ai_status_card'), si = document.getElementById('ai_status_icon'), sl = document.getElementById('ai_status_label'), sd = document.getElementById('ai_status_desc');
                         const ts = new Date(data.updated_at).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});

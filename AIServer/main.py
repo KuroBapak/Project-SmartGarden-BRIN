@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 50)
     logger.info("🚀 SmartGarden BRIN — AI Server starting")
     logger.info(f"   Dashboard URL: {config.DASHBOARD_URL}")
-    logger.info(f"   Analysis engine: rule-based-v1")
+    logger.info(f"   Analysis engine: risk-scoring-v2")
     logger.info(f"   YOLO model: {config.YOLO_MODEL_PATH}")
     logger.info(f"   Analysis interval: {config.ANALYSIS_INTERVAL}s")
     logger.info("=" * 50)
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI):
 
     # Schedule periodic tasks
     sched.add_job(scheduler.run_energy_analysis, "interval", seconds=config.ANALYSIS_INTERVAL,
-                  id="energy_analysis", next_run_time=None)
+                  id="energy_analysis")
                   
     sched.start()
 

@@ -1,5 +1,5 @@
 # =============================================================
-# SmartGarden BRIN — Docker Compose (Pak Yoga Deployment)
+# SmartGarden BRIN — Docker Compose (Pak Yogi Deployment)
 # 3 services: Laravel Dashboard, MySQL, AI Server
 # Port range: 7000-7010
 # =============================================================
@@ -33,7 +33,7 @@ services:
 
     # ─── Laravel Dashboard (Nginx Unit + PHP 8.3) ──────────────
   app:
-    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB (Tanpa Build Ulang)
+    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB TEAM SAYA
     image: ghcr.io/kurobapak/project-smartgarden-brin:latest
     pull_policy: always
     container_name: smartgarden-app
@@ -58,7 +58,7 @@ services:
 
   # ─── AI Server (FastAPI + YOLO) ─────────────────────────────
   ai-server:
-    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB
+    # MENGGUNAKAN PRE-BUILT IMAGE DARI GITHUB TEAM SAYA
     image: ghcr.io/kurobapak/project-smartgarden-brin-ai:latest
     pull_policy: always
     container_name: smartgarden-ai
@@ -78,10 +78,53 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ─── EMQX (MQTT Broker + Rule Engine) ───────────────────────
+  emqx:
+    image: emqx:5.6
+    container_name: smartgarden-emqx
+    restart: unless-stopped
+    ports:
+      - "1883:1883" # MQTT TCP (untuk ESP32)
+      - "8083:8083" # MQTT WebSocket (untuk Dashboard)
+      - "18083:18083" # EMQX Admin Dashboard
+    volumes:
+      - emqx_data:/opt/emqx/data
+    networks:
+      - smartgarden
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── InfluxDB (Time-Series Database) ────────────────────────
+  influxdb:
+    image: influxdb:2.7
+    container_name: smartgarden-influx
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    networks:
+      - smartgarden
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   mysql_data:
     driver: local
   storage_data:
+    driver: local
+  emqx_data:
+    driver: local
+  influxdb_data:
+    driver: local
+  influxdb_config:
     driver: local
 
 networks:

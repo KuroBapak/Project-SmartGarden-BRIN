@@ -33,13 +33,17 @@ async def run_energy_analysis():
         payload = {
             "analysis_text": analysis_text,
             "status": battery["status"],
-            "model": "rule-based-engine-v1",
+            "model": "risk-scoring-engine-v2",
+            "risk_score": battery["risk_score"],
             "net_power": battery["net_power"],
             "solar_power": battery["solar_power"],
             "load_power": battery["load_power"],
             "battery_pct": battery["battery_pct"],
             "endurance_hours": battery["endurance_hours"],
             "solar_forecast": battery["solar_forecast"],
+            "can_survive_night": battery["can_survive_night"],
+            "time_to_full": battery["time_to_full"],
+            "time_to_empty": battery["time_to_empty"],
             "raw_data": {"solar": solar, "sensors": latest_sensors},
         }
         await dashboard_client.push_energy_analysis(payload)

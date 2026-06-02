@@ -23,16 +23,20 @@ class AiResultController extends Controller
     public function storeEnergyAnalysis(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'analysis_text'   => 'required|string',
-            'status'          => 'required|string|in:normal,hoarding,emergency',
-            'model'           => 'nullable|string',
-            'net_power'       => 'nullable|numeric',
-            'solar_power'     => 'nullable|numeric',
-            'load_power'      => 'nullable|numeric',
-            'battery_pct'     => 'nullable|numeric',
-            'endurance_hours' => 'nullable|numeric',
-            'solar_forecast'  => 'nullable|numeric',
-            'raw_data'        => 'nullable|array',
+            'analysis_text'     => 'required|string',
+            'status'            => 'required|string|in:normal,hoarding,emergency',
+            'model'             => 'nullable|string',
+            'risk_score'        => 'nullable|numeric',
+            'net_power'         => 'nullable|numeric',
+            'solar_power'       => 'nullable|numeric',
+            'load_power'        => 'nullable|numeric',
+            'battery_pct'       => 'nullable|numeric',
+            'endurance_hours'   => 'nullable|numeric',
+            'solar_forecast'    => 'nullable|numeric',
+            'can_survive_night' => 'nullable|boolean',
+            'time_to_full'      => 'nullable|numeric',
+            'time_to_empty'     => 'nullable|numeric',
+            'raw_data'          => 'nullable|array',
         ]);
 
         // Synchronous cleanup: delete all previous records so we only keep the latest one
@@ -130,17 +134,21 @@ class AiResultController extends Controller
         }
 
         return response()->json([
-            'id'              => $latest->id,
-            'analysis_text'   => $latest->analysis_text,
-            'status'          => $latest->status,
-            'model'           => $latest->model,
-            'net_power'       => $latest->net_power,
-            'solar_power'     => $latest->solar_power,
-            'load_power'      => $latest->load_power,
-            'battery_pct'     => $latest->battery_pct,
-            'endurance_hours' => $latest->endurance_hours,
-            'solar_forecast'  => $latest->solar_forecast,
-            'updated_at'      => $latest->updated_at->toIso8601String(),
+            'id'                => $latest->id,
+            'analysis_text'     => $latest->analysis_text,
+            'status'            => $latest->status,
+            'model'             => $latest->model,
+            'risk_score'        => $latest->risk_score,
+            'net_power'         => $latest->net_power,
+            'solar_power'       => $latest->solar_power,
+            'load_power'        => $latest->load_power,
+            'battery_pct'       => $latest->battery_pct,
+            'endurance_hours'   => $latest->endurance_hours,
+            'solar_forecast'    => $latest->solar_forecast,
+            'can_survive_night' => $latest->can_survive_night,
+            'time_to_full'      => $latest->time_to_full,
+            'time_to_empty'     => $latest->time_to_empty,
+            'updated_at'        => $latest->updated_at->toIso8601String(),
         ]);
     }
 
