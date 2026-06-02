@@ -25,7 +25,6 @@ class AiResultController extends Controller
         $data = $request->validate([
             'analysis_text'     => 'required|string',
             'status'            => 'required|string|in:normal,hoarding,emergency',
-            'model'             => 'nullable|string',
             'risk_score'        => 'nullable|numeric',
             'net_power'         => 'nullable|numeric',
             'solar_power'       => 'nullable|numeric',
@@ -137,7 +136,6 @@ class AiResultController extends Controller
             'id'                => $latest->id,
             'analysis_text'     => $latest->analysis_text,
             'status'            => $latest->status,
-            'model'             => $latest->model,
             'risk_score'        => $latest->risk_score,
             'net_power'         => $latest->net_power,
             'solar_power'       => $latest->solar_power,

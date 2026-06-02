@@ -16,8 +16,13 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('settings')" :active="request()->routeIs('settings')">
-                        {{ __('Settings') }}
+                        {{ __('Pengaturan') }}
                     </x-nav-link>
+                    @can('manage-users')
+                    <x-nav-link :href="route('accounts.index')" :active="request()->routeIs('accounts.*')">
+                        {{ __('Akun') }}
+                    </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -74,8 +79,13 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('settings')" :active="request()->routeIs('settings')">
-                {{ __('Settings') }}
+                {{ __('Pengaturan') }}
             </x-responsive-nav-link>
+            @can('manage-users')
+            <x-responsive-nav-link :href="route('accounts.index')" :active="request()->routeIs('accounts.*')">
+                {{ __('Akun') }}
+            </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->

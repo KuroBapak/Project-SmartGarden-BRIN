@@ -15,13 +15,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Master Admin',
+            'email' => 'admin@gmail.com',
+            'password' => bcrypt('password'), // Or Hash::make if imported
+            'role' => 'master_admin',
         ]);
 
-        $this->call(SmartGardenSeeder::class);
+        User::factory()->create([
+            'name' => 'Moreno',
+            'email' => 'morenokarbar@gmail.com',
+            'password' => bcrypt('password'),
+            'role' => 'user',
+        ]);
+
     }
 }

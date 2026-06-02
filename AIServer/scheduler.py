@@ -33,7 +33,6 @@ async def run_energy_analysis():
         payload = {
             "analysis_text": analysis_text,
             "status": battery["status"],
-            "model": "risk-scoring-engine-v2",
             "risk_score": battery["risk_score"],
             "net_power": battery["net_power"],
             "solar_power": battery["solar_power"],

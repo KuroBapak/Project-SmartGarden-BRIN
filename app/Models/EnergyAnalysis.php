@@ -9,7 +9,6 @@ class EnergyAnalysis extends Model
     protected $fillable = [
         'analysis_text',
         'status',
-        'model',
         'risk_score',
         'net_power',
         'solar_power',
