@@ -15,14 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
+        User::create([
             'name' => 'Master Admin',
             'email' => 'admin@gmail.com',
             'password' => bcrypt('password'), // Or Hash::make if imported
             'role' => 'master_admin',
         ]);
 
-        User::factory()->create([
+        User::create([
             'name' => 'Moreno',
             'email' => 'morenokarbar@gmail.com',
             'password' => bcrypt('password'),
