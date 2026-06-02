@@ -10,12 +10,16 @@ class DashboardController extends Controller
     {
         $interval = request('interval', '10m');
         $range = request('range', '-6h');
+        $solar_interval = request('solar_interval', '10m');
+        $solar_range = request('solar_range', '-6h');
 
         $allowedIntervals = ['5m', '10m', '15m', '30m', '1h'];
         $allowedRanges = ['-1h', '-6h', '-12h', '-24h', '-7d'];
 
         if (!in_array($interval, $allowedIntervals)) $interval = '10m';
         if (!in_array($range, $allowedRanges)) $range = '-6h';
+        if (!in_array($solar_interval, $allowedIntervals)) $solar_interval = '10m';
+        if (!in_array($solar_range, $allowedRanges)) $solar_range = '-6h';
 
         $historicalData = [
             'labels' => [],
@@ -118,10 +122,10 @@ class DashboardController extends Controller
 
                 $querySolar = "
                   from(bucket: \"{$bucketSolar}\")
-                    |> range(start: {$range})
+                    |> range(start: {$solar_range})
                     |> filter(fn: (r) => r[\"_measurement\"] == \"solar_panel\")
                     |> filter(fn: (r) => r[\"_field\"] == \"pv_power\" or r[\"_field\"] == \"load_power\" or r[\"_field\"] == \"battery_percentage\")
-                    |> aggregateWindow(every: {$interval}, fn: mean, createEmpty: false)
+                    |> aggregateWindow(every: {$solar_interval}, fn: mean, createEmpty: false)
                     |> yield(name: \"mean\")
                 ";
 
@@ -167,7 +171,7 @@ class DashboardController extends Controller
             ]
         );
 
-        return view('dashboard', compact('historicalData', 'historicalSolarData', 'setting', 'interval', 'range'));
+        return view('dashboard', compact('historicalData', 'historicalSolarData', 'setting', 'interval', 'range', 'solar_interval', 'solar_range'));
     }
 
     public function solarData()

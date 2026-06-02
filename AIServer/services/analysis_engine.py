@@ -171,53 +171,25 @@ def _build_normal(net_power, solar_power, load_power, battery_pct,
                   endurance, solar_forecast, time_ctx, is_daytime,
                   weather_ctx, sensor_ctx, risk_score, can_survive,
                   time_to_full, time_to_empty, hours_to_sunset) -> str:
-    """Build analysis text for NORMAL status."""
+    """Build concise analysis text for NORMAL status."""
     lines = [f"🟢 Sistem Normal (Risk Score: {risk_score:.0%}):"]
 
-    # Power status
-    if net_power > 0:
-        lines.append(f"• Net daya +{net_power:.1f}W — solar charging aktif, surplus energi")
-    elif net_power == 0:
-        lines.append(f"• Daya seimbang — konsumsi {load_power}W sama dengan produksi solar")
-    else:
-        lines.append(f"• Net daya {net_power:.1f}W — baterai menyuplai {abs(net_power):.1f}W tambahan")
+    lines.append(f"• 🔋 Baterai {battery_pct:.0f}%, Net Daya {net_power:+.1f}W.")
 
-    # Battery + charging info
-    if battery_pct >= 90:
-        lines.append(f"• Baterai {battery_pct:.0f}% — kapasitas cadangan maksimal")
-    elif battery_pct >= 70:
-        lines.append(f"• Baterai {battery_pct:.0f}% — level baik, sistem stabil")
-    else:
-        lines.append(f"• Baterai {battery_pct:.0f}% — masih aman, {'charging aktif' if is_daytime else 'charging dimulai pagi'}")
-
-    # Time-to-full or time-to-empty
     if time_to_full is not None:
-        lines.append(f"• Estimasi penuh dalam {_format_hours(time_to_full)}")
+        lines.append(f"• ⏱️ Estimasi penuh: {_format_hours(time_to_full)}")
     elif endurance is not None:
-        lines.append(f"• Estimasi daya tahan: {_format_hours(endurance)}")
+        lines.append(f"• ⏱️ Estimasi daya tahan: {_format_hours(endurance)}")
 
-    # Night survival
-    if can_survive:
-        lines.append("• ✅ Cadangan energi cukup untuk melewati malam")
+    if is_daytime:
+        lines.append(f"• 🌤️ Solar aktif {solar_power}W. Cuaca: {weather_ctx['dominant_weather']}.")
     else:
-        lines.append(f"• ⚠️ Cadangan mungkin tidak cukup untuk malam — {_format_hours(hours_to_sunset)} hingga matahari terbenam")
+        lines.append(f"• 🌙 Malam hari. Prediksi cuaca besok: {weather_ctx['dominant_weather']}.")
 
-    # Weather
-    lines.append(f"• Cuaca: {weather_ctx['summary']}")
-
-    # Solar context
-    if is_daytime and solar_power > 0:
-        efficiency = (solar_power / PANEL_MAX_W) * 100
-        lines.append(f"• Solar panel aktif {solar_power}W ({efficiency:.0f}% kapasitas), prediksi rata-rata {solar_forecast}W")
-    elif not is_daytime:
-        lines.append(f"• Waktu {time_ctx} — solar standby, prediksi besok {solar_forecast}W rata-rata")
-
-    # Sensor alerts
     if sensor_ctx["alerts"]:
         lines.append(f"• ⚠️ {sensor_ctx['alerts'][0]}")
 
-    lines.append("• Semua aktuator (pompa, aerator, mist) dapat beroperasi penuh")
-
+    lines.append("• ✅ Sistem stabil, semua aktuator beroperasi penuh.")
     return "\n".join(lines)
 
 
@@ -225,48 +197,24 @@ def _build_hoarding(net_power, solar_power, load_power, battery_pct,
                     endurance, solar_forecast, time_ctx, is_daytime,
                     weather_ctx, sensor_ctx, risk_score, can_survive,
                     time_to_full, time_to_empty, hours_to_sunset, hours_to_sunrise) -> str:
-    """Build analysis text for HOARDING (energy saving) status."""
+    """Build concise analysis text for HOARDING status."""
     lines = [f"🟡 Mode Hemat Energi (Risk Score: {risk_score:.0%}):"]
 
-    # Why hoarding?
+    lines.append(f"• 🔋 Baterai {battery_pct:.0f}%, Net Daya {net_power:+.1f}W.")
+
     if not can_survive:
-        lines.append(f"• Cadangan energi tidak cukup untuk malam — perlu konservasi segera")
+        lines.append(f"• ⚠️ Energi berisiko tak cukup untuk malam ini.")
     elif weather_ctx["has_rain"]:
-        lines.append(f"• {weather_ctx['summary']} — output solar akan menurun")
+        lines.append(f"• ⚠️ Cuaca {weather_ctx['dominant_weather'].lower()}, output solar akan menurun.")
     elif battery_pct < 50:
-        lines.append(f"• Baterai {battery_pct:.0f}% — di bawah level ideal, perlu pengisian")
-    else:
-        lines.append(f"• Kondisi cuaca/energi kurang mendukung — aktivasi mode konservasi")
+        lines.append(f"• ⚠️ Baterai di bawah batas ideal, perlu pengisian.")
 
-    # Battery + power
-    if net_power >= 0:
-        lines.append(f"• Baterai {battery_pct:.0f}%, net daya +{net_power:.1f}W (charging, tapi lambat)")
-    else:
-        lines.append(f"• Baterai {battery_pct:.0f}%, net daya {net_power:.1f}W (defisit {abs(net_power):.1f}W)")
-
-    # Endurance info
     if time_to_empty is not None:
-        lines.append(f"• Estimasi baterai habis dalam {_format_hours(time_to_empty)} (tanpa intervensi)")
-    elif time_to_full is not None:
-        lines.append(f"• Estimasi penuh dalam {_format_hours(time_to_full)}")
+        lines.append(f"• ⏱️ Estimasi baterai habis: {_format_hours(time_to_empty)}")
 
-    # Night survival warning
-    if not can_survive:
-        if is_daytime:
-            lines.append(f"• ⏱️ {_format_hours(hours_to_sunset)} hingga matahari terbenam — tingkatkan charging")
-        else:
-            lines.append(f"• ⏱️ {_format_hours(hours_to_sunrise)} hingga matahari terbit — hemat energi")
+    lines.append("• ⚡ AKSI: Kurangi frekuensi pompa dosing (pH/TDS), pertahankan sirkulasi air utama.")
 
-    # Recommendations
-    lines.append("• Rekomendasi: kurangi frekuensi pompa sirkulasi, prioritaskan aerator")
-
-    if not is_daytime:
-        lines.append(f"• Waktu {time_ctx} — matikan beban non-esensial hingga pagi")
-    else:
-        lines.append(f"• Prediksi solar {solar_forecast}W — di bawah optimal karena tutupan awan {weather_ctx['avg_cloud']:.0f}%")
-
-    # Sensor alerts
-    for alert in sensor_ctx["alerts"][:2]:
+    for alert in sensor_ctx["alerts"][:1]:
         lines.append(f"• ⚠️ {alert}")
 
     return "\n".join(lines)
@@ -277,57 +225,27 @@ def _build_emergency(net_power, solar_power, load_power, battery_pct,
                      weather_ctx, sensor_ctx, risk_score, can_survive,
                      time_to_full, time_to_empty, hours_to_sunrise,
                      risk_factors) -> str:
-    """Build analysis text for EMERGENCY status."""
+    """Build concise analysis text for EMERGENCY status."""
     lines = [f"🔴 Mode Darurat Aktif (Risk Score: {risk_score:.0%}):"]
 
-    # Determine primary reason for emergency
     if battery_pct < MINIMUM_SAFE_SOC:
-        lines.append(f"• KRITIS: Baterai hanya {battery_pct:.1f}% — di bawah batas aman {MINIMUM_SAFE_SOC}%")
-    elif weather_ctx["has_storm"]:
-        lines.append(f"• PERINGATAN: {weather_ctx['summary']}")
+        lines.append(f"• KRITIS: Baterai {battery_pct:.1f}% (Batas {MINIMUM_SAFE_SOC}%). Net daya: {net_power:+.1f}W.")
     elif not can_survive:
-        lines.append(f"• KRITIS: Energi tidak cukup untuk bertahan hingga pagi")
+        lines.append(f"• KRITIS: Energi tak cukup untuk bertahan hingga pagi. Net daya: {net_power:+.1f}W.")
     else:
-        lines.append(f"• Kondisi energi kritis — sumber daya tidak mencukupi kebutuhan")
+        lines.append(f"• KRITIS: Kondisi energi & cuaca buruk. Net daya: {net_power:+.1f}W.")
 
-    # Battery + power (context-aware)
-    if net_power >= 0:
-        lines.append(f"• Baterai {battery_pct:.1f}%, net daya +{net_power:.1f}W (charging, tapi baterai masih sangat rendah)")
-    else:
-        lines.append(f"• Baterai {battery_pct:.1f}%, net daya {net_power:+.1f}W (defisit {abs(net_power):.1f}W)")
-
-    # Endurance (with context)
     if time_to_empty is not None:
-        lines.append(f"• ⏱️ Estimasi baterai habis dalam {_format_hours(time_to_empty)}")
+        lines.append(f"• ⏱️ Estimasi baterai habis: {_format_hours(time_to_empty)}")
     elif time_to_full is not None and battery_pct < 50:
-        lines.append(f"• ⏱️ Estimasi baterai aman ({50}%) dalam {_format_hours(time_to_full * (50 - battery_pct) / max(100 - battery_pct, 1))}")
+        lines.append(f"• ⏱️ Estimasi aman (50%): {_format_hours(time_to_full * (50 - battery_pct) / max(100 - battery_pct, 1))}")
 
-    # Emergency actions
-    lines.append("• AKSI: Matikan pompa sirkulasi & mist spray — hanya aerator yang aktif")
-    lines.append("• AKSI: Aktifkan mode survival — beban minimum hingga solar recovery")
+    lines.append("• ⚡ AKSI: Hentikan pompa dosing & kipas! Prioritaskan sisa daya untuk pompa air utama.")
 
-    # Solar context
     if is_daytime:
-        lines.append(f"• Solar hanya {solar_power}W (prediksi {solar_forecast}W) — cuaca {weather_ctx['dominant_weather'].lower()}")
+        lines.append(f"• 🌤️ Info: Solar {solar_power}W (Prediksi {solar_forecast}W). Cuaca: {weather_ctx['dominant_weather'].lower()}.")
     else:
-        lines.append(f"• Solar standby (malam) — recovery dimulai pagi ({_format_hours(hours_to_sunrise)} lagi)")
-
-    # Risk breakdown (top 2 contributors)
-    if risk_factors:
-        top_risks = sorted(risk_factors.items(), key=lambda x: x[1], reverse=True)[:2]
-        risk_labels = {
-            "soc": "Level baterai",
-            "energy_budget": "Cadangan energi",
-            "weather": "Cuaca",
-            "net_power": "Defisit daya",
-            "time": "Waktu (malam)"
-        }
-        contributors = ", ".join(f"{risk_labels.get(k, k)} ({v:.0%})" for k, v in top_risks)
-        lines.append(f"• Faktor risiko utama: {contributors}")
-
-    # Sensor alerts
-    for alert in sensor_ctx["alerts"][:1]:
-        lines.append(f"• ⚠️ {alert}")
+        lines.append(f"• 🌙 Info: Tunggu pagi ({_format_hours(hours_to_sunrise)} lagi) untuk solar recovery.")
 
     return "\n".join(lines)
 

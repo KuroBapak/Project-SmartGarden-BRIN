@@ -152,19 +152,21 @@
                                 Riwayat Surya & Beban
                             </h3>
                             <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
-                                <select name="range" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
-                                    <option value="-1h" {{ $range == '-1h' ? 'selected' : '' }}>1 Jam Terakhir</option>
-                                    <option value="-6h" {{ $range == '-6h' ? 'selected' : '' }}>6 Jam Terakhir</option>
-                                    <option value="-12h" {{ $range == '-12h' ? 'selected' : '' }}>12 Jam Terakhir</option>
-                                    <option value="-24h" {{ $range == '-24h' ? 'selected' : '' }}>24 Jam Terakhir</option>
-                                    <option value="-7d" {{ $range == '-7d' ? 'selected' : '' }}>7 Hari Terakhir</option>
+                                <input type="hidden" name="range" value="{{ $range }}">
+                                <input type="hidden" name="interval" value="{{ $interval }}">
+                                <select name="solar_range" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
+                                    <option value="-1h" {{ $solar_range == '-1h' ? 'selected' : '' }}>1 Jam Terakhir</option>
+                                    <option value="-6h" {{ $solar_range == '-6h' ? 'selected' : '' }}>6 Jam Terakhir</option>
+                                    <option value="-12h" {{ $solar_range == '-12h' ? 'selected' : '' }}>12 Jam Terakhir</option>
+                                    <option value="-24h" {{ $solar_range == '-24h' ? 'selected' : '' }}>24 Jam Terakhir</option>
+                                    <option value="-7d" {{ $solar_range == '-7d' ? 'selected' : '' }}>7 Hari Terakhir</option>
                                 </select>
-                                <select name="interval" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
-                                    <option value="5m" {{ $interval == '5m' ? 'selected' : '' }}>Jarak: 5m</option>
-                                    <option value="10m" {{ $interval == '10m' ? 'selected' : '' }}>Jarak: 10m</option>
-                                    <option value="15m" {{ $interval == '15m' ? 'selected' : '' }}>Jarak: 15m</option>
-                                    <option value="30m" {{ $interval == '30m' ? 'selected' : '' }}>Jarak: 30m</option>
-                                    <option value="1h" {{ $interval == '1h' ? 'selected' : '' }}>Jarak: 1h</option>
+                                <select name="solar_interval" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
+                                    <option value="5m" {{ $solar_interval == '5m' ? 'selected' : '' }}>Jarak: 5m</option>
+                                    <option value="10m" {{ $solar_interval == '10m' ? 'selected' : '' }}>Jarak: 10m</option>
+                                    <option value="15m" {{ $solar_interval == '15m' ? 'selected' : '' }}>Jarak: 15m</option>
+                                    <option value="30m" {{ $solar_interval == '30m' ? 'selected' : '' }}>Jarak: 30m</option>
+                                    <option value="1h" {{ $solar_interval == '1h' ? 'selected' : '' }}>Jarak: 1h</option>
                                 </select>
                             </form>
                         </div>
@@ -356,15 +358,17 @@
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                             <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-                            Sensor History
+                            Riwayat Sensor
                         </h3>
                         <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
+                            <input type="hidden" name="solar_range" value="{{ $solar_range }}">
+                            <input type="hidden" name="solar_interval" value="{{ $solar_interval }}">
                             <select name="range" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
-                                <option value="-1h" {{ $range == '-1h' ? 'selected' : '' }}>Last 1 Hour</option>
-                                <option value="-6h" {{ $range == '-6h' ? 'selected' : '' }}>Last 6 Hours</option>
-                                <option value="-12h" {{ $range == '-12h' ? 'selected' : '' }}>Last 12 Hours</option>
-                                <option value="-24h" {{ $range == '-24h' ? 'selected' : '' }}>Last 24 Hours</option>
-                                <option value="-7d" {{ $range == '-7d' ? 'selected' : '' }}>Last 7 Days</option>
+                                <option value="-1h" {{ $range == '-1h' ? 'selected' : '' }}>1 Jam Terakhir</option>
+                                <option value="-6h" {{ $range == '-6h' ? 'selected' : '' }}>6 Jam Terakhir</option>
+                                <option value="-12h" {{ $range == '-12h' ? 'selected' : '' }}>12 Jam Terakhir</option>
+                                <option value="-24h" {{ $range == '-24h' ? 'selected' : '' }}>24 Jam Terakhir</option>
+                                <option value="-7d" {{ $range == '-7d' ? 'selected' : '' }}>7 Hari Terakhir</option>
                             </select>
                             <select name="interval" onchange="this.form.submit()" class="text-[10px] sm:text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 py-1 pl-2 pr-6">
                                 <option value="5m" {{ $interval == '5m' ? 'selected' : '' }}>Jarak: 5m</option>
@@ -388,7 +392,7 @@
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                             <svg class="w-4 h-4 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            Plant Disease Detection
+                            Deteksi Penyakit Tanaman
                             <span id="plant_scan_status_dot" class="h-2 w-2 rounded-full bg-gray-300 transition-colors"></span>
                         </h3>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -476,12 +480,12 @@
                 labels: rawData.labels,
                 datasets: [
                     {
-                        label: 'Water Temp (°C)', data: rawData.water_temp,
+                        label: 'Suhu Air (°C)', data: rawData.water_temp,
                         borderColor: 'rgb(59, 130, 246)', tension: 0.3, yAxisID: 'y-regular',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
                     {
-                        label: 'Air Temp (°C)', data: rawData.air_temp,
+                        label: 'Suhu Udara (°C)', data: rawData.air_temp,
                         borderColor: 'rgb(239, 68, 68)', tension: 0.3, yAxisID: 'y-regular',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
@@ -491,12 +495,12 @@
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
                     {
-                        label: 'Humidity (%)', data: rawData.humidity,
+                        label: 'Kelembapan (%)', data: rawData.humidity,
                         borderColor: 'rgb(6, 182, 212)', tension: 0.3, yAxisID: 'y-percent',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
                     {
-                        label: 'Light Level (%)', data: rawData.light,
+                        label: 'Intensitas Cahaya (%)', data: rawData.light,
                         borderColor: 'rgb(168, 85, 247)', tension: 0.3, yAxisID: 'y-percent',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
@@ -506,12 +510,12 @@
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
                     {
-                        label: 'Turbidity', data: rawData.turbidity,
+                        label: 'Kekeruhan (NTU)', data: rawData.turbidity,
                         borderColor: 'rgb(249, 115, 22)', tension: 0.3, yAxisID: 'y-percent',
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
                     },
                     {
-                        label: 'RSSI (dBm)', data: rawData.rssi,
+                        label: 'Sinyal WiFi (dBm)', data: rawData.rssi,
                         borderColor: 'rgb(16, 185, 129)', tension: 0.3, yAxisID: 'y-rssi',
                         borderDash: [5, 3],
                         pointRadius: initRadius(), pointHitRadius: initHitRadius(), pointHoverRadius: initHoverRadius()
@@ -535,12 +539,12 @@
                         },
                         'y-regular': {
                             type: 'linear', display: true, position: 'left',
-                            title: { display: true, text: 'Temp & pH' },
+                            title: { display: true, text: 'Suhu & pH' },
                             beginAtZero: true, suggestedMax: 40
                         },
                         'y-percent': {
                             type: 'linear', display: true, position: 'right',
-                            title: { display: true, text: 'Percentage / Turbidity' },
+                            title: { display: true, text: 'Persentase / Kekeruhan' },
                             beginAtZero: true, suggestedMax: 100,
                             grid: { drawOnChartArea: false }
                         },
@@ -571,17 +575,17 @@
                 labels: rawSolarData.labels,
                 datasets: [
                     {
-                        label: 'Solar PV (W)', data: rawSolarData.pv_power,
+                        label: 'Panel Surya (W)', data: rawSolarData.pv_power,
                         borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, fill: true,
                         pointRadius: initSolarRadius(), pointHitRadius: initSolarHitRadius(), pointHoverRadius: initSolarHoverRadius()
                     },
                     {
-                        label: 'Load (W)', data: rawSolarData.load_power,
+                        label: 'Beban (W)', data: rawSolarData.load_power,
                         borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true,
                         pointRadius: initSolarRadius(), pointHitRadius: initSolarHitRadius(), pointHoverRadius: initSolarHoverRadius()
                     },
                     {
-                        label: 'Battery (%)', data: rawSolarData.battery_percentage,
+                        label: 'Baterai (%)', data: rawSolarData.battery_percentage,
                         borderColor: 'rgb(16, 185, 129)', tension: 0.3, yAxisID: 'y-battery',
                         borderDash: [5, 3],
                         pointRadius: initSolarRadius(), pointHitRadius: initSolarHitRadius(), pointHoverRadius: initSolarHoverRadius()
