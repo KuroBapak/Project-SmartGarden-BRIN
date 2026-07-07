@@ -44,12 +44,12 @@
         | MQTT over WSS              | MQTT CMD       | HTTP Stream
         v                            |                v
 +------------------+         +-------+--------------------------------+
-|   EMQX Broker    |         |       AI SERVER  (FastAPI :8001)       |
+|   EMQX Broker    |         |  ANALYTICS SERVER (FastAPI :8001)      |
 |  mqtt.broker.com |         |                                        |
-+--------+---------+         |  Rule-Based Engine YOLOv8 Detection    |
-         |                   |  Battery AI    InfluxDB Query          |
-         | WebSocket         |  BMKG Weather  APScheduler             |
-         v                   |  - Energy analysis: every 30 min       |
++--------+---------+         |  Risk Scoring Engine   YOLOv8 Detection|
+         |                   |  InfluxDB Query        APScheduler     |
+         | WebSocket         |  BMKG Weather          REST API        |
+         v                   |  - Risk analysis: every 30 min         |
 +------------------+         |  - Plant scan: push from Raspi Pi      |
 | WEB DASHBOARD    |<------->+----------------------------------------+
 | Laravel  :8000   |  REST API (X-API-Key)
@@ -86,15 +86,18 @@
 - **Raw values**: Raw ADC/voltage shown beneath each calculated value for debugging
 - **Historical charts**: Interactive Chart.js graphs with 5 selectable time ranges
 
-### Energy Management
+### Energy Management & Analytics
 - Solar panel monitoring: PV voltage, current, power via InfluxDB
 - Battery tracking: percentage, voltage, endurance estimation
-- Smart Battery AI: 3 modes — Normal, Mode Hemat Energi, Emergency
-
-### AI Recommendations
-- Automated energy analysis every 30 minutes (embedded in AI Server scheduler)
+- Rule-Based Risk Scoring Engine v2: Python-based deterministic analytics
+- 3 Operational Modes: GREEN (Normal), YELLOW (Hoarding), RED (Emergency)
+- Automated energy analysis every 30 minutes (embedded in Analytics Server scheduler)
 - Context: real sensor data + solar data + BMKG 24h weather forecast
-- Output: concise bullet-point recommendations displayed on dashboard
+
+### Secure Access Control (RBAC)
+- Role-Based Access Control distinguishing 'master_admin' and 'user' privileges.
+- Closed-System Authentication: Public registration disabled.
+- Dedicated account management interface for Master Admins.
 
 ### Plant Disease Detection (YOLOv8)
 - **Push-based Architecture**: Raspberry Pi runs `raspi_sender.py` to capture and upload images directly to the AI Server via `/api/scan/upload`
@@ -151,9 +154,9 @@
 | Component | Technology |
 |-----------|-----------|
 | MQTT Broker | EMQX (cloud or local) |
-| Time-Series DB | InfluxDB 2.x |
-| Microcontroller | ESP32 (custom firmware `code_amcs.ino`) |
-| Camera | Raspberry Pi + Pi Camera + Flask streamer |
+| Time-Series DB | InfluxDB 2.x (with strict Line Protocol type enforcement) |
+| Microcontroller | ESP32 (FreeRTOS Multicore, WiFiManager Captive Portal) |
+| Camera | Raspberry Pi + Pi Camera + HTTP push |
 
 ---
 
@@ -475,10 +478,12 @@ Dashboard-AMCS-Replika-BRIN-AI/
 
 | Feature | Description |
 |---------|-------------|
-| Sensor reading | ADS1115 ADC for pH, TDS, Turbidity; DS18B20 for water temp; DHT11 for air/humidity |
-| Connectivity | WiFi + MQTT over WebSocket Secure (WSS port 443) |
+| Core Architecture | FreeRTOS Multicore (Core 0: Network/WSS, Core 1: Sensor/Control) |
+| Network Provisioning | Captive Portal via WiFiManager (SSID "AMCS-Setup") |
+| Sensor reading | ADS1115 ADC for pH, TDS, Turbidity; DS18B20 for water temp |
+| Connectivity | WiFi + MQTT over WebSocket Secure (WSS port 8083 proxy) |
 | Calibration storage | `Preferences` library (NVS flash) — survives reboot |
-| Telemetry interval | Default 60 seconds (configurable via dashboard) |
+| Data Types | Strict InfluxDB primitive enforcement (Integers vs Floats) |
 | Relay control | 4 relays (R1–R4) for pumps/fan, active LOW |
 | Display | ST7735 TFT LCD — shows sensor values + relay status |
 | Automation | Pulse & Check algorithm — runs locally on ESP32 using pushed rules |
@@ -502,10 +507,17 @@ Dashboard-AMCS-Replika-BRIN-AI/
 
 ## Changelog
 
+### V6 — Final Production Hardening (June 2026)
+- **Rule-Based Risk Scoring Engine**: Pemusnahan dependensi Ollama/LLM demi latensi <1s dan eliminasi halusinasi.
+- **Role-Based Access Control (RBAC)**: Lockdown registrasi publik, implementasi Gate `master_admin` vs `user`.
+- **FreeRTOS & WiFiManager**: Optimasi dual-core ESP32 dan Captive Portal untuk network provisioning on-the-fly.
+- **InfluxDB Strictness**: Pengerasan schema MQTT payload untuk mencegah *Type Conflict Anomalies*.
+- Penyempurnaan `paper.txt` yang merefleksikan seluruh arsitektur *production-grade*.
+
 ### V5 — Production Ready & Cleanup (May 2026)
 - **Push-based AI Upload**: AI Server tidak lagi me-request kamera, melainkan menerima foto yang di-push oleh script `raspi_sender.py` secara aman via API Key. Fitur manual trigger yang sudah obsolete dihapus total.
 - **Docker Environments**: Pemisahan konfigurasi `docker-compose.yml` untuk lingkungan server Coolify dan `docker-compose.yogi.yml` untuk server standalone MySQL.
-- **Translasi UI**: Terminologi Dashboard disesuaikan penuh ke Bahasa Indonesia yang rapi (termasuk "Mode Hemat Energi").
+- **Translasi UI**: Terminologi Dashboard disesuaikan penuh ke Bahasa Indonesia yang rapi.
 - Sinkronisasi endpoint AI Server dengan environment terpadu (`python-dotenv`).
 
 ### V4 — Calibration & Safety Enhancements (May 2026)

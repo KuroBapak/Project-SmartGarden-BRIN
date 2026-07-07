@@ -44,7 +44,13 @@ return [
     ],
 
     'influxdb' => [
-        'url' => env('INFLUXDB_URL', 'http://192.168.50.100:8086'),
+        'url' => (function() {
+            $url = env('INFLUXDB_URL', 'http://192.168.50.100:8086');
+            if (!str_starts_with($url, 'http')) {
+                $url = str_contains($url, ':') ? "http://{$url}" : "https://{$url}";
+            }
+            return $url;
+        })(),
         'token' => env('INFLUXDB_TOKEN', ''),
         'org' => env('INFLUXDB_ORG', ''),
         'bucket' => env('INFLUXDB_BUCKET', ''),

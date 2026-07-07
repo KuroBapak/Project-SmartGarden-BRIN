@@ -1,6 +1,5 @@
 # =============================================================
 # SmartGarden BRIN — Docker Compose (Pak Yogi Deployment)
-# 3 services: Laravel Dashboard, MySQL, AI Server
 # Port range: 7000-7010
 # =============================================================
 

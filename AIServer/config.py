@@ -12,7 +12,9 @@ YOLO_MODEL_PATH     = os.getenv("YOLO_MODEL_PATH")
 YOLO_CONFIDENCE     = float(os.getenv("YOLO_CONFIDENCE"))
 
 # InfluxDB
-INFLUXDB_URL        = os.getenv("INFLUXDB_URL")
+INFLUXDB_URL        = os.getenv("INFLUXDB_URL", "")
+if INFLUXDB_URL and not INFLUXDB_URL.startswith("http"):
+    INFLUXDB_URL = "https://" + INFLUXDB_URL if ":" not in INFLUXDB_URL else "http://" + INFLUXDB_URL
 INFLUXDB_TOKEN      = os.getenv("INFLUXDB_TOKEN")
 INFLUXDB_ORG        = os.getenv("INFLUXDB_ORG")
 INFLUXDB_BUCKET_SOLAR = os.getenv("INFLUXDB_BUCKET_SOLAR")
