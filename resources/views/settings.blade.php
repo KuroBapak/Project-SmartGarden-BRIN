@@ -103,6 +103,7 @@
             <form method="POST" action="{{ route('settings.config') }}" id="configForm" @submit.prevent="saveConfig($event.target)">
                 @csrf
                 <input type="hidden" name="device_id" value="{{ $setting->device_id }}">
+                <input type="hidden" name="preset_name" :value="activePresetName || 'default'">
                 <input type="hidden" name="interval_ms" :value="formData.interval_ms">
                 <template x-for="p in 4" :key="p">
                     <input type="hidden" :name="'pump_names[pump_'+p+']'" :value="formData.pump_names['pump_'+p]">
@@ -322,77 +323,105 @@
                     // Disable the json fields so they don't submit natively as strings
                     form.querySelector('[name="rules"]').disabled = true;
 
-                    if (!window.mqttClient || !window.mqttClient.connected) {
-                        console.warn('MQTT not connected, saving to DB only');
+                    @if(config('services.mqtt.use_tcp'))
+                        // TCP MODE: Backend handles the MQTT publish inside the controller
+                        console.log('TCP Mode: Submitting form, backend will sync config via MQTT');
                         form.submit();
-                        return;
-                    }
-
-                    const cal = this.formData.calibration;
-                    const cfgPayload = {
-                        action: 'set_config',
-                        interval: parseInt(this.formData.interval_ms),
-                        preset: this.activePresetName || 'default',
-                        cal: {
-                            ph: { 
-                                p1_ph: parseFloat(cal.ph.p1_ph), 
-                                p1_mv: parseFloat(cal.ph.p1_mv), 
-                                p2_ph: parseFloat(cal.ph.p2_ph), 
-                                p2_mv: parseFloat(cal.ph.p2_mv) 
-                            },
-                            tds: { k: parseFloat(cal.tds.k) },
-                            turb: { zero_v: parseFloat(cal.turb.zero_v) },
-                        },
-                        rules: this.formData.rules.map(r => ({
-                            s: r.sensor, c: r.condition, v: parseFloat(r.value),
-                            p: parseInt(r.pump), pulse: parseInt(r.pulse),
-                            stab: parseInt(r.stabilize), max: parseInt(r.max_pulses), cd: parseInt(r.cooldown)
-                        }))
-                    };
-
-                    window.mqttClient.publish(`brin/water/{{ $setting->device_id }}/down/cmd`, JSON.stringify(cfgPayload), {qos: 0}, function(err) {
-                        if (!err) {
-                            console.log('Config synced via MQTT');
+                    @else
+                        // WS MODE: Browser publishes config via mqtt.js then submits form
+                        if (!window.mqttClient || !window.mqttClient.connected) {
+                            console.warn('MQTT not connected, saving to DB only');
                             form.submit();
-                        } else {
-                            alert('MQTT sync gagal!');
-                            btn.disabled = false;
-                            btn.innerHTML = 'Simpan & Sinkronisasi';
-                            form.querySelector('[name="rules"]').disabled = false;
+                            return;
                         }
-                    });
+
+                        const cal = this.formData.calibration;
+                        const cfgPayload = {
+                            action: 'set_config',
+                            interval: parseInt(this.formData.interval_ms),
+                            preset: this.activePresetName || 'default',
+                            pump_names: {
+                                p1: this.formData.pump_names.pump_1,
+                                p2: this.formData.pump_names.pump_2,
+                                p3: this.formData.pump_names.pump_3,
+                                p4: this.formData.pump_names.pump_4
+                            },
+                            cal: {
+                                ph: { 
+                                    p1_ph: parseFloat(cal.ph.p1_ph), 
+                                    p1_mv: parseFloat(cal.ph.p1_mv), 
+                                    p2_ph: parseFloat(cal.ph.p2_ph), 
+                                    p2_mv: parseFloat(cal.ph.p2_mv) 
+                                },
+                                tds: { k: parseFloat(cal.tds.k) },
+                                turb: { zero_v: parseFloat(cal.turb.zero_v) },
+                            },
+                            rules: this.formData.rules.map(r => ({
+                                s: r.sensor, c: r.condition, v: parseFloat(r.value),
+                                p: parseInt(r.pump), pulse: parseInt(r.pulse),
+                                stab: parseInt(r.stabilize), max: parseInt(r.max_pulses), cd: parseInt(r.cooldown)
+                            }))
+                        };
+
+                        window.mqttClient.publish(`brin/water/{{ $setting->device_id }}/down/cmd`, JSON.stringify(cfgPayload), {qos: 0}, function(err) {
+                            if (!err) {
+                                console.log('Config synced via MQTT');
+                                form.submit();
+                            } else {
+                                alert('MQTT sync gagal!');
+                                btn.disabled = false;
+                                btn.innerHTML = 'Simpan & Sinkronisasi';
+                                form.querySelector('[name="rules"]').disabled = false;
+                            }
+                        });
+                    @endif
                 }
             };
         }
 
-        // MQTT for live raw values + sync config
+        // LIVE RAW VALUES FETCH
         document.addEventListener('DOMContentLoaded', function() {
-            const mqttOptions = {
-                keepalive: 60,
-                clientId: '{{ config("services.mqtt.client_id") }}' + '-cfg-' + Math.random().toString(16).substr(2,6),
-                protocolId: 'MQTT', protocolVersion: 4, clean: true, reconnectPeriod: 1000, connectTimeout: 30000,
-                username: '{{ config("services.mqtt.username") }}',
-                password: '{{ config("services.mqtt.password") }}',
-            };
+            @if(config('services.mqtt.use_tcp'))
+                // TCP MODE: Poll /api/sensor every 5 seconds for live raw calibration values
+                console.log('Settings: TCP Mode, polling /api/sensor for live raw values');
+                setInterval(() => {
+                    fetch('/api/sensor')
+                        .then(r => r.json())
+                        .then(p => {
+                            if (!p.error) {
+                                window.dispatchEvent(new CustomEvent('mqtt-telemetry', { detail: p }));
+                            }
+                        }).catch(e => console.error('Settings poll error:', e));
+                }, 5000);
+            @else
+                // WS MODE: Connect directly to broker via WebSocket for live raw values
+                const mqttOptions = {
+                    keepalive: 60,
+                    clientId: '{{ config("services.mqtt.client_id") }}' + '-cfg-' + Math.random().toString(16).substr(2,6),
+                    protocolId: 'MQTT', protocolVersion: 4, clean: true, reconnectPeriod: 1000, connectTimeout: 30000,
+                    username: '{{ config("services.mqtt.username") }}',
+                    password: '{{ config("services.mqtt.password") }}',
+                };
 
-            const mqttHost = '{{ config("services.mqtt.host") }}';
-            const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
-            const brokerUrl = mqttWsPort ? `ws://${mqttHost}:${mqttWsPort}/mqtt` : `wss://${mqttHost}/mqtt`;
-            const client = mqtt.connect(brokerUrl, mqttOptions);
-            window.mqttClient = client; // Expose globally for Alpine JS
+                const mqttHost = '{{ config("services.mqtt.host") }}';
+                const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
+                const brokerUrl = mqttWsPort ? `ws://${mqttHost}:${mqttWsPort}/mqtt` : `wss://${mqttHost}/mqtt`;
+                const client = mqtt.connect(brokerUrl, mqttOptions);
+                window.mqttClient = client; // Expose globally for Alpine JS
 
-            client.on('connect', function() {
-                console.log('Settings: MQTT connected');
-                client.subscribe('brin/water/+/up/telemetry');
-            });
+                client.on('connect', function() {
+                    console.log('Settings: MQTT connected (WS Mode)');
+                    client.subscribe('brin/water/+/up/telemetry');
+                });
 
-            // Update live raw values from telemetry via Custom Event
-            client.on('message', function(topic, message) {
-                try {
-                    const p = JSON.parse(message.toString());
-                    window.dispatchEvent(new CustomEvent('mqtt-telemetry', { detail: p }));
-                } catch(e) { console.error('MQTT Parse Error:', e); }
-            });
+                // Update live raw values from telemetry via Custom Event
+                client.on('message', function(topic, message) {
+                    try {
+                        const p = JSON.parse(message.toString());
+                        window.dispatchEvent(new CustomEvent('mqtt-telemetry', { detail: p }));
+                    } catch(e) { console.error('MQTT Parse Error:', e); }
+                });
+            @endif
         });
     </script>
 </x-app-layout>

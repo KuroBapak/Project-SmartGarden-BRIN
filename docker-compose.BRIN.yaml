@@ -77,17 +77,23 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ─── EMQX (MQTT Broker + Rule Engine) ───────────────────────
-  emqx:
-    image: emqx:5.6
-    container_name: smartgarden-emqx
+  # ─── Mosquitto (MQTT Broker) ─────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: smartgarden-mqtt
     restart: unless-stopped
+    entrypoint: /mosquitto/config/init-passwd.sh
+    environment:
+      - MQTT_AUTH_USERNAME=${MQTT_AUTH_USERNAME}
+      - MQTT_AUTH_PASSWORD=${MQTT_AUTH_PASSWORD}
     ports:
-      - "1883:1883" # MQTT TCP (untuk ESP32)
-      - "8083:8083" # MQTT WebSocket (untuk Dashboard)
-      - "18083:18083" # EMQX Admin Dashboard
+      - "1883:1883"   # TCP (MqttListener, TCP-mode publish)
+      - "8083:8083"   # WebSocket (browser, ESP32)
     volumes:
-      - emqx_data:/opt/emqx/data
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl:/mosquitto/config/acl:ro
+      - ./mosquitto/init-passwd.sh:/mosquitto/config/init-passwd.sh:ro
+      - mosquitto_data:/mosquitto/data
     networks:
       - smartgarden
     logging:
@@ -119,7 +125,7 @@ volumes:
     driver: local
   storage_data:
     driver: local
-  emqx_data:
+  mosquitto_data:
     driver: local
   influxdb_data:
     driver: local

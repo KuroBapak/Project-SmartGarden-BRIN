@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AiResultController;
+use App\Http\Controllers\PumpCommandController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -38,6 +39,12 @@ Route::middleware('auth')->group(function () {
     // InfluxDB Data Fetching (Realtime via Polling)
     Route::get('/api/solar', [\App\Http\Controllers\DashboardController::class, 'solarData'])->name('api.solar');
     Route::get('/api/sensor', [\App\Http\Controllers\DashboardController::class, 'sensorData'])->name('api.sensor');
+    Route::get('/api/mqtt/status', [\App\Http\Controllers\DashboardController::class, 'mqttStatus'])->name('api.mqtt.status');
+
+    // TCP Mode Pump Dispatch (Rate limited: 10 requests / minute)
+    Route::post('/api/pump/{device}', [PumpCommandController::class, 'dispatch'])
+        ->middleware('throttle:10,1')
+        ->name('api.pump.dispatch');
 
     // BMKG Weather Forecast API
     Route::get('/api/bmkg/forecast', [\App\Http\Controllers\BmkgController::class, 'forecast'])->name('api.bmkg.forecast');

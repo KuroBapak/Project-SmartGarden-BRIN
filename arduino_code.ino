@@ -7,7 +7,7 @@
 #include <OneWire.h>
 #include <Preferences.h>
 #include <SPI.h>
-#include <WebSocketsClient.h>
+#include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <Wire.h>
@@ -43,7 +43,8 @@ char mqtt_topic_sub[64];
 #define PIN_FAN 14
 
 // ================= OBJECTS & MUTEX =================
-WebSocketsClient webSocket;
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 Adafruit_ADS1115 ads;
 OneWire oneWire(ONE_WIRE_BUS);
@@ -78,6 +79,11 @@ int weather_type = 0;
 
 String current_preset = "Default";
 unsigned long telemetry_interval = 5000;
+
+char pump1_name[20] = "pH Up";
+char pump2_name[20] = "TDS";
+char pump3_name[20] = "Air";
+char pump4_name[20] = "Fan";
 
 float cal_ph_p1_ph = 6.86, cal_ph_p1_mv = 1621.0;
 float cal_ph_p2_ph = 4.01, cal_ph_p2_mv = 2117.0;
@@ -148,7 +154,7 @@ void refreshTFT() {
 
   tft.setCursor(105, 5);
   tft.setTextColor(isMqttConnected ? ST77XX_GREEN : ST77XX_RED, ST77XX_BLACK);
-  tft.print(isMqttConnected ? "WSS:OK " : "WSS:OFF");
+  tft.print(isMqttConnected ? "TCP:OK " : "TCP:OFF");
 
   tft.setCursor(5, 20);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
@@ -160,20 +166,24 @@ void refreshTFT() {
 
   char buf[10];
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  
   tft.setCursor(5, 35);
   tft.print("pH   : ");
   dtostrf(current_ph, 5, 2, buf);
   tft.print(buf);
+
   tft.setCursor(5, 50);
   tft.print("TDS  : ");
   dtostrf(current_tds, 5, 0, buf);
   tft.print(buf);
   tft.print(" ppm  ");
+
   tft.setCursor(5, 65);
   tft.print("Suhu : ");
   dtostrf(current_water_temp, 5, 1, buf);
   tft.print(buf);
   tft.print(" C    ");
+
   tft.setCursor(5, 80);
   tft.print("Turb : ");
   dtostrf(current_turb, 5, 1, buf);
@@ -257,119 +267,17 @@ void runSolarSimulation() {
   }
 }
 
-// ================= MQTT BUILDER =================
-void sendMqttConnect() {
-  String clientId = "esp32_1";
-  uint8_t varHeader[] = {0x00, 0x04, 'M',  'Q',  'T',
-                         'T',  0x04, 0xC2, 0x00, 0x3C};
-  uint16_t clientLen = clientId.length();
+// ================= MQTT HANDLER =================
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  String msg = "";
+  for (int i = 0; i < length; i++) {
+    msg += (char)payload[i];
+  }
 
-  uint16_t userLen = strlen(mqtt_user);
-  uint16_t passLen = strlen(mqtt_pass);
-
-  size_t remainingLen =
-      sizeof(varHeader) + (2 + clientLen) + (2 + userLen) + (2 + passLen);
-  uint8_t packet[256];
-  int idx = 0;
-  packet[idx++] = 0x10;
-  size_t len = remainingLen;
-  do {
-    uint8_t d = len % 128;
-    len /= 128;
-    if (len > 0)
-      d |= 0x80;
-    packet[idx++] = d;
-  } while (len > 0);
-  for (int i = 0; i < sizeof(varHeader); i++)
-    packet[idx++] = varHeader[i];
-
-  packet[idx++] = (clientLen >> 8);
-  packet[idx++] = (clientLen & 0xFF);
-  for (int i = 0; i < clientLen; i++)
-    packet[idx++] = clientId[i];
-
-  packet[idx++] = (userLen >> 8);
-  packet[idx++] = (userLen & 0xFF);
-  for (int i = 0; i < userLen; i++)
-    packet[idx++] = mqtt_user[i];
-
-  packet[idx++] = (passLen >> 8);
-  packet[idx++] = (passLen & 0xFF);
-  for (int i = 0; i < passLen; i++)
-    packet[idx++] = mqtt_pass[i];
-
-  webSocket.sendBIN(packet, idx);
-}
-
-void sendMqttSubscribe(const char *topic) {
-  String t = topic;
-  size_t rLen = 5 + t.length();
-  uint8_t packet[128];
-  int idx = 0;
-  packet[idx++] = 0x82;
-  packet[idx++] = rLen;
-  packet[idx++] = 0x00;
-  packet[idx++] = 0x01;
-  packet[idx++] = (t.length() >> 8);
-  packet[idx++] = (t.length() & 0xFF);
-  for (int i = 0; i < t.length(); i++)
-    packet[idx++] = t[i];
-  packet[idx++] = 0x00;
-  webSocket.sendBIN(packet, idx);
-}
-
-void sendMqttPublish(const char *topic, const char *payload) {
-  String t = topic;
-  String p = payload;
-  size_t rLen = 2 + t.length() + p.length();
-  uint8_t packet[1024];
-  int idx = 0;
-  packet[idx++] = 0x30;
-  size_t len = rLen;
-  do {
-    uint8_t d = len % 128;
-    len /= 128;
-    if (len > 0)
-      d |= 0x80;
-    packet[idx++] = d;
-  } while (len > 0);
-  packet[idx++] = (t.length() >> 8);
-  packet[idx++] = (t.length() & 0xFF);
-  for (int i = 0; i < t.length(); i++)
-    packet[idx++] = t[i];
-  for (int i = 0; i < p.length(); i++)
-    packet[idx++] = p[i];
-  webSocket.sendBIN(packet, idx);
-}
-
-// ================= WSS HANDLER =================
-void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
-  switch (type) {
-  case WStype_DISCONNECTED:
-    isMqttConnected = false;
-    break;
-  case WStype_CONNECTED:
-    sendMqttConnect();
-    break;
-  case WStype_BIN:
-    if (length > 0) {
-      if ((payload[0] & 0xF0) == 0x20) {
-        isMqttConnected = true;
-        sendMqttSubscribe(mqtt_topic_sub);
-      } else if ((payload[0] & 0xF0) == 0x30) {
-        int h = 2;
-        if ((payload[1] & 0x80) != 0)
-          h = 3;
-        int tLen =
-            ((unsigned char)payload[h] << 8) | (unsigned char)payload[h + 1];
-        String msg = "";
-        for (int i = h + 2 + tLen; i < length; i++)
-          msg += (char)payload[i];
-
-        StaticJsonDocument<1536> doc;
-        DeserializationError err = deserializeJson(doc, msg);
-        if (!err) {
-          String action = doc["action"];
+  StaticJsonDocument<1536> doc;
+  DeserializationError err = deserializeJson(doc, msg);
+  if (!err) {
+    String action = doc["action"];
 
           if (xSemaphoreTake(sysMutex, portMAX_DELAY)) {
             if (action == "set_config") {
@@ -390,6 +298,13 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
                   cal_tds_k = cal["tds"]["k"] | 1.1013;
                 if (cal.containsKey("turb"))
                   cal_turb_zero_v = cal["turb"]["zero_v"] | 2.1;
+              }
+
+              if (doc.containsKey("pump_names")) {
+                strlcpy(pump1_name, doc["pump_names"]["p1"] | "pH Up", sizeof(pump1_name));
+                strlcpy(pump2_name, doc["pump_names"]["p2"] | "TDS", sizeof(pump2_name));
+                strlcpy(pump3_name, doc["pump_names"]["p3"] | "Air", sizeof(pump3_name));
+                strlcpy(pump4_name, doc["pump_names"]["p4"] | "Fan", sizeof(pump4_name));
               }
 
               ruleCount = 0;
@@ -421,6 +336,11 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
               preferences.putFloat("cal_tdsk", cal_tds_k);
               preferences.putFloat("cal_turbz", cal_turb_zero_v);
 
+              preferences.putString("p1_name", pump1_name);
+              preferences.putString("p2_name", pump2_name);
+              preferences.putString("p3_name", pump3_name);
+              preferences.putString("p4_name", pump4_name);
+
               String rulesJson;
               serializeJson(doc["rules"], rulesJson);
               preferences.putString("rules", rulesJson);
@@ -440,11 +360,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
               }
             }
             xSemaphoreGive(sysMutex);
-          }
-        }
-      }
     }
-    break;
   }
 }
 
@@ -453,9 +369,9 @@ void TaskNetwork(void *pvParameters) {
   WiFiManager wm;
   wm.setConfigPortalTimeout(300);
 
-  WiFiManagerParameter custom_mqtt_host("host", "MQTT Host (WSS)", mqtt_host,
+  WiFiManagerParameter custom_mqtt_host("host", "MQTT Host (TCP)", mqtt_host,
                                         40);
-  WiFiManagerParameter custom_mqtt_port("port", "Port (443)", mqtt_port, 6);
+  WiFiManagerParameter custom_mqtt_port("port", "Port (1883)", mqtt_port, 6);
   WiFiManagerParameter custom_mqtt_user("user", "MQTT User", mqtt_user, 32);
   WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password", mqtt_pass, 32);
   WiFiManagerParameter custom_mqtt_pub("pub", "Topic Publish", mqtt_topic_pub,
@@ -477,8 +393,6 @@ void TaskNetwork(void *pvParameters) {
   }
 
   Serial.println("WiFi Terhubung!");
-
-  // Mengaktifkan Auto-Reconnect bawaan hardware yang efisien
   WiFi.setAutoReconnect(true);
 
   if (xSemaphoreTake(sysMutex, portMAX_DELAY)) {
@@ -498,89 +412,82 @@ void TaskNetwork(void *pvParameters) {
     xSemaphoreGive(sysMutex);
   }
 
-  static bool wssStarted = false;
+  mqttClient.setServer(mqtt_host, atoi(mqtt_port));
+  mqttClient.setCallback(mqttCallback);
+  mqttClient.setBufferSize(1024); // CRITICAL: Increase buffer from default 256 bytes to prevent silent payload drops
+
+  unsigned long lastReconnectAttempt = 0;
 
   for (;;) {
     unsigned long now = millis();
 
-    // Pemantauan WiFi pasif (tanpa paksaan reconnect manual)
     if (now - lastWifiCheck > 5000) {
       lastWifiCheck = now;
       if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi Terputus... Menunggu Auto-Reconnect Internal ESP");
-        isMqttConnected = false; // Mengamankan state WSS/MQTT
+        Serial.println("WiFi Terputus...");
+        isMqttConnected = false;
       }
     }
 
-    // Eksekusi WSS internal library (Wajib dipanggil untuk pembersihan memori
-    // TCP)
-    webSocket.loop();
-
-    // Pastikan operasi jaringan hanya berjalan saat terhubung
     if (WiFi.status() == WL_CONNECTED) {
+      if (!mqttClient.connected()) {
+        isMqttConnected = false;
+        if (now - lastReconnectAttempt > 5000) {
+          lastReconnectAttempt = now;
+          String clientId = "ESP32-BRIN-" + String(random(0xffff), HEX);
+          
+          bool connected = false;
+          if (strlen(mqtt_user) > 0) {
+            connected = mqttClient.connect(clientId.c_str(), mqtt_user, mqtt_pass);
+          } else {
+            connected = mqttClient.connect(clientId.c_str());
+          }
 
-      if (!wssStarted) {
-        uint16_t portNum = atoi(mqtt_port);
-        webSocket.beginSSL(mqtt_host, portNum, "/mqtt", "", "mqtt");
-        String origin = String("Origin: https://") + String(mqtt_host);
-        webSocket.setExtraHeaders(origin.c_str());
-        webSocket.onEvent(webSocketEvent);
-        wssStarted = true;
-      }
-
-      // Ping
-      if (isMqttConnected && (now - lastPing > 10000)) {
-        lastPing = now;
-        uint8_t p[] = {0xC0, 0x00};
-        webSocket.sendBIN(p, 2);
-      }
-
-      // Publikasi Telemetri
-      if (isMqttConnected && (now - lastPublish >= telemetry_interval)) {
-        lastPublish = now;
-        StaticJsonDocument<768> doc;
-
-        // Ambil data dari shared memory dengan cepat
-        if (xSemaphoreTake(sysMutex, portMAX_DELAY)) {
-          doc["preset"] = current_preset;
-          doc["ph"] = current_ph;
-          doc["tds"] = current_tds;
-          doc["turbidity"] = current_turb;
-          doc["water_temp"] = current_water_temp;
-          doc["air_temp"] = current_air_temp;
-
-          doc["pv_voltage"] = pv_voltage;
-          doc["pv_current"] = pv_current;
-          doc["pv_power"] = pv_power_w;
-          doc["battery_voltage"] = battery_voltage;
-          doc["battery_percentage"] = battery_percentage;
-          doc["load_power"] = current_load_w;
-          doc["net_power"] = net_power_w;
-
-          doc["raw_ph_mv"] = raw_ph_mv;
-          doc["raw_tds_v"] = raw_tds_v;
-          doc["raw_turb_v"] = raw_turb_v;
-
-          bool anyCorrection = false;
-          for (int i = 0; i < 4; i++)
-            if (pumpStates[i].inCorrection)
-              anyCorrection = true;
-          doc["mode"] = anyCorrection ? "correction" : "normal";
-          xSemaphoreGive(sysMutex);
+          if (connected) {
+            mqttClient.subscribe(mqtt_topic_sub);
+            isMqttConnected = true;
+          }
         }
+      } else {
+        isMqttConnected = true;
+        mqttClient.loop();
 
-        // Pengambilan data sensor langsung (Tidak butuh perlindungan Mutex)
-        doc["humidity"] = dht.readHumidity();
-        doc["light"] = (analogRead(LDR_PIN) / 4095.0) * 100.0;
-        doc["rssi"] = WiFi.RSSI();
-        doc["pump_1"] = (digitalRead(PUMP_PINS[0]) == LOW) ? 1 : 0;
-        doc["pump_2"] = (digitalRead(PUMP_PINS[1]) == LOW) ? 1 : 0;
-        doc["pump_3"] = (digitalRead(PUMP_PINS[2]) == LOW) ? 1 : 0;
-        doc["pump_4"] = (digitalRead(PUMP_PINS[3]) == LOW) ? 1 : 0;
+        if (now - lastPublish >= telemetry_interval) {
+          lastPublish = now;
+          StaticJsonDocument<512> doc;
 
-        char jsonBuffer[768];
-        serializeJson(doc, jsonBuffer);
-        sendMqttPublish(mqtt_topic_pub, jsonBuffer);
+          if (xSemaphoreTake(sysMutex, portMAX_DELAY)) {
+            doc["preset"] = current_preset;
+            doc["water_temp"] = current_water_temp;
+            doc["air_temp"] = current_air_temp;
+
+            doc["pv_voltage"] = pv_voltage;
+            doc["pv_current"] = pv_current;
+            doc["pv_power"] = pv_power_w;
+            doc["battery_voltage"] = battery_voltage;
+            doc["battery_percentage"] = battery_percentage;
+            doc["load_power"] = current_load_w;
+            doc["net_power"] = net_power_w;
+
+            doc["raw_ph_mv"] = raw_ph_mv;
+            doc["raw_tds_v"] = raw_tds_v;
+            doc["raw_turb_v"] = raw_turb_v;
+
+            xSemaphoreGive(sysMutex);
+          }
+
+          doc["humidity"] = dht.readHumidity();
+          doc["light"] = (analogRead(LDR_PIN) / 4095.0) * 100.0;
+          doc["rssi"] = WiFi.RSSI();
+          doc["pump_1"] = (digitalRead(PUMP_PINS[0]) == LOW) ? 1 : 0;
+          doc["pump_2"] = (digitalRead(PUMP_PINS[1]) == LOW) ? 1 : 0;
+          doc["pump_3"] = (digitalRead(PUMP_PINS[2]) == LOW) ? 1 : 0;
+          doc["pump_4"] = (digitalRead(PUMP_PINS[3]) == LOW) ? 1 : 0;
+
+          char jsonBuffer[768];
+          serializeJson(doc, jsonBuffer);
+          mqttClient.publish(mqtt_topic_pub, jsonBuffer);
+        }
       }
     }
 
@@ -778,6 +685,15 @@ void setup() {
   cal_ph_p2_mv = preferences.getFloat("cal_p2mv", 2117.0);
   cal_tds_k = preferences.getFloat("cal_tdsk", 1.1013);
   cal_turb_zero_v = preferences.getFloat("cal_turbz", 2.1);
+
+  String p1 = preferences.getString("p1_name", "pH Up");
+  String p2 = preferences.getString("p2_name", "TDS");
+  String p3 = preferences.getString("p3_name", "Air");
+  String p4 = preferences.getString("p4_name", "Fan");
+  strlcpy(pump1_name, p1.c_str(), sizeof(pump1_name));
+  strlcpy(pump2_name, p2.c_str(), sizeof(pump2_name));
+  strlcpy(pump3_name, p3.c_str(), sizeof(pump3_name));
+  strlcpy(pump4_name, p4.c_str(), sizeof(pump4_name));
 
   String savedRules = preferences.getString("rules", "[]");
   StaticJsonDocument<1024> rdoc;

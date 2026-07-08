@@ -36,11 +36,14 @@ return [
     ],
 
     'mqtt' => [
-        'host' => env('MQTT_HOST', '192.168.50.100'),
-        'ws_port' => env('MQTT_WS_PORT', ''),
-        'client_id' => env('MQTT_CLIENT_ID', 'WebClient'),
-        'username' => env('MQTT_AUTH_USERNAME', ''),
-        'password' => env('MQTT_AUTH_PASSWORD', ''),
+        'host'           => env('MQTT_HOST', '192.168.50.100'),
+        'ws_port'        => env('MQTT_WS_PORT', ''),
+        'tcp_port'       => env('MQTT_TCP_PORT', 1883),
+        'listener_host'  => env('MQTT_LISTENER_HOST', env('MQTT_HOST', '192.168.50.100')),
+        'use_tcp'        => filter_var(env('MQTT_USE_TCP', false), FILTER_VALIDATE_BOOLEAN),
+        'client_id'      => env('MQTT_CLIENT_ID', 'WebClient'),
+        'username'       => env('MQTT_AUTH_USERNAME', ''),
+        'password'       => env('MQTT_AUTH_PASSWORD', ''),
     ],
 
     'influxdb' => [

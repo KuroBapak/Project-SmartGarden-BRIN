@@ -1,0 +1,6 @@
+# Laravel bridge (MqttListener + publishers): full access to all brin/ topics
+user Laravel-SmartGarden
+topic readwrite brin/#
+
+# Default: deny all other topics
+# This prevents a compromised client from subscribing to $SYS or other system topics

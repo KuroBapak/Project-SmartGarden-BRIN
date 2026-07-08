@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\DeviceSetting;
 use App\Models\PlantPreset;
+use App\Services\MqttService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class DeviceCommandController extends Controller
 {
@@ -26,7 +28,7 @@ class DeviceCommandController extends Controller
         return view('settings', compact('setting', 'presets'));
     }
 
-    public function updateConfig(Request $request)
+    public function updateConfig(Request $request, MqttService $mqtt)
     {
         // Parse JSON strings from Alpine.js hidden inputs
         if (is_string($request->rules)) {
@@ -69,10 +71,55 @@ class DeviceCommandController extends Controller
             ]
         );
 
+        // If TCP mode, publish set_config to ESP32 via server-side MQTT
+        if (config('services.mqtt.use_tcp')) {
+            try {
+                $cfgPayload = [
+                    'action'     => 'set_config',
+                    'interval'   => $validated['interval_ms'],
+                    'preset'     => $request->input('preset_name', 'default'),
+                    'pump_names' => [
+                        'p1' => $validated['pump_names']['pump_1'],
+                        'p2' => $validated['pump_names']['pump_2'],
+                        'p3' => $validated['pump_names']['pump_3'],
+                        'p4' => $validated['pump_names']['pump_4'],
+                    ],
+                    'cal' => [
+                        'ph'   => [
+                            'p1_ph' => (float) ($validated['calibration']['ph']['p1_ph'] ?? 4.0),
+                            'p1_mv' => (float) ($validated['calibration']['ph']['p1_mv'] ?? 1500.0),
+                            'p2_ph' => (float) ($validated['calibration']['ph']['p2_ph'] ?? 6.86),
+                            'p2_mv' => (float) ($validated['calibration']['ph']['p2_mv'] ?? 1100.0),
+                        ],
+                        'tds'  => ['k' => (float) ($validated['calibration']['tds']['k'] ?? 1.0)],
+                        'turb' => ['zero_v' => (float) ($validated['calibration']['turb']['zero_v'] ?? 2.1)],
+                    ],
+                    'rules' => collect($validated['rules'] ?? [])->map(fn($r) => [
+                        's' => $r['sensor'], 'c' => $r['condition'], 'v' => (float) $r['value'],
+                        'p' => (int) $r['pump'], 'pulse' => (int) $r['pulse'],
+                        'stab' => (int) $r['stabilize'], 'max' => (int) $r['max_pulses'],
+                        'cd' => (int) $r['cooldown'],
+                    ])->toArray(),
+                ];
+
+                $topic = "brin/water/{$validated['device_id']}/down/cmd";
+                $success = $mqtt->publish($topic, json_encode($cfgPayload));
+
+                if (!$success) {
+                    return redirect()->back()
+                        ->with('status', 'config-saved-mqtt-failed')
+                        ->with('warning', 'Config saved to DB but MQTT sync failed.');
+                }
+            } catch (\Exception $e) {
+                Log::error('[DeviceCommand] Config publish failed', ['error' => $e->getMessage()]);
+                return redirect()->back()->with('status', 'config-saved-mqtt-failed');
+            }
+        }
+
         return redirect()->back()->with('status', 'config-updated');
     }
 
-    public function manualOverride(Request $request)
+    public function manualOverride(Request $request, MqttService $mqtt)
     {
         $validated = $request->validate([
             'device_id' => 'required|string',
@@ -80,7 +127,18 @@ class DeviceCommandController extends Controller
             'duration'  => 'required|integer|min:1000|max:300000',
         ]);
 
-        // MQTT publish handled by frontend via mqtt.js WebSocket
+        // TCP mode: publish via server-side MQTT
+        if (config('services.mqtt.use_tcp')) {
+            $payload = [
+                'action'   => 'manual_pump',
+                'target'   => $validated['target'],
+                'duration' => $validated['duration'],
+            ];
+            $topic = "brin/water/{$validated['device_id']}/down/cmd";
+            $mqtt->publish($topic, json_encode($payload));
+        }
+        // WS mode: frontend handles publish via mqtt.js (unchanged)
+
         return response()->json([
             'status'  => 'success',
             'message' => "Manual override sent for {$validated['target']}",

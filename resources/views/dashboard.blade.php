@@ -609,37 +609,96 @@
                 }
             });
 
-            // ─── 2. MQTT ────────────────────────────────────────────────────────────
-            const mqttOptions = {
-                keepalive: 60,
-                clientId: '{{ config("services.mqtt.client_id") }}' + '-' + Math.random().toString(16).substr(2, 6),
-                protocolId: 'MQTT', protocolVersion: 4, clean: true, reconnectPeriod: 1000, connectTimeout: 30000,
-                username: '{{ config("services.mqtt.username") }}',
-                password: '{{ config("services.mqtt.password") }}',
-            };
-
-            const mqttHost = '{{ config("services.mqtt.host") }}';
-            const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
-            const brokerUrl = mqttWsPort ? `ws://${mqttHost}:${mqttWsPort}/mqtt` : `wss://${mqttHost}/mqtt`;
-            const pubTopic = `brin/water/{{ $setting->device_id }}/down/cmd`;
-
+            // ─── 2. MQTT & PUMP COMMANDS (DUAL MODE) ─────────────────────────────
             const badge = document.getElementById('mqtt_status_badge');
-            const client = mqtt.connect(brokerUrl, mqttOptions);
+            const deviceId = '{{ $setting->device_id }}';
 
-            client.on('connect', function () {
-                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200';
-                badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Online';
-            });
-            client.on('error', function () {
-                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-red-50 text-red-700 border-red-200';
-                badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-red-500"></span> Error';
-            });
-            client.on('offline', function () {
-                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-gray-50 text-gray-600 border-gray-200';
-                badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-gray-400"></span> Offline';
-            });
+            @if(config('services.mqtt.use_tcp'))
+                // ==========================================
+                // TCP MODE: API Polling & Backend Dispatch
+                // ==========================================
+                
+                // Status polling
+                function checkMqttStatus() {
+                    fetch('/api/mqtt/status')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.connected) {
+                                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200';
+                                badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Online';
+                            } else {
+                                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-red-50 text-red-700 border-red-200';
+                                badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-red-500"></span> Offline';
+                            }
+                        }).catch(() => {
+                            badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-gray-50 text-gray-600 border-gray-200';
+                            badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-gray-400"></span> Error';
+                        });
+                }
+                checkMqttStatus();
+                setInterval(checkMqttStatus, 10000); // Check every 10s
 
-            // ─── 3. MANUAL PUMP MODAL ──────────────────────────────────────────────
+                // Pump publish via Backend API
+                function sendPumpCommand(action, target, durationMs, onSuccess) {
+                    const payload = { action, target, duration: durationMs };
+                    fetch(`/api/pump/${deviceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(payload)
+                    }).then(async r => {
+                        if (r.ok) onSuccess();
+                        else alert('Gagal kirim command: ' + (await r.json()).message || 'API Error');
+                    }).catch(err => {
+                        console.error(err);
+                        alert('Gagal kirim command ke server');
+                    });
+                }
+            @else
+                // ==========================================
+                // WS MODE: Direct Browser MQTT (mqtt.js)
+                // ==========================================
+                const mqttOptions = {
+                    keepalive: 60,
+                    clientId: '{{ config("services.mqtt.client_id") }}' + '-' + Math.random().toString(16).substr(2, 6),
+                    protocolId: 'MQTT', protocolVersion: 4, clean: true, reconnectPeriod: 1000, connectTimeout: 30000,
+                    username: '{{ config("services.mqtt.username") }}',
+                    password: '{{ config("services.mqtt.password") }}',
+                };
+
+                const mqttHost = '{{ config("services.mqtt.host") }}';
+                const mqttWsPort = '{{ config("services.mqtt.ws_port") }}';
+                const brokerUrl = mqttWsPort ? `ws://${mqttHost}:${mqttWsPort}/mqtt` : `wss://${mqttHost}/mqtt`;
+                const pubTopic = `brin/water/${deviceId}/down/cmd`;
+
+                const client = mqtt.connect(brokerUrl, mqttOptions);
+
+                client.on('connect', function () {
+                    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-emerald-50 text-emerald-700 border-emerald-200';
+                    badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Online';
+                });
+                client.on('error', function () {
+                    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-red-50 text-red-700 border-red-200';
+                    badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-red-500"></span> Error';
+                });
+                client.on('offline', function () {
+                    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm bg-gray-50 text-gray-600 border-gray-200';
+                    badge.innerHTML = '<span class="h-2 w-2 rounded-full bg-gray-400"></span> Offline';
+                });
+
+                function sendPumpCommand(action, target, durationMs, onSuccess) {
+                    if (!client.connected) { alert('MQTT Not Connected!'); return; }
+                    const payload = { action, target, duration: durationMs };
+                    client.publish(pubTopic, JSON.stringify(payload), {qos: 0}, function(err) {
+                        if (err) alert('Gagal kirim command via MQTT');
+                        else onSuccess();
+                    });
+                }
+            @endif
+
+            // ─── 3. MANUAL PUMP MODAL UI (Shared logic) ────────────────────────
             const pumpHistoryKey = (pump) => `pump_history_${pump}`;
 
             function getPumpHistory(pump) {
@@ -671,12 +730,7 @@
                 const btn = document.getElementById(`btn_${pump}`);
                 if (btn && btn.classList.contains('pump-running')) {
                     if (confirm(`Hentikan operasi ${title} sekarang?`)) {
-                        if (!client.connected) { alert('MQTT Not Connected!'); return; }
-                        const payload = { action: 'manual_pump', target: pump, duration: 0 };
-                        client.publish(pubTopic, JSON.stringify(payload), {qos: 0}, function(err) {
-                            if (err) alert('Gagal kirim command stop');
-                            else stopPumpAnimation(pump);
-                        });
+                        sendPumpCommand('manual_pump', pump, 0, () => stopPumpAnimation(pump));
                     }
                     return;
                 }
@@ -758,16 +812,13 @@
                     return; 
                 }
 
-                if (!client.connected) { alert('MQTT Not Connected!'); closePumpModal(); return; }
-                
                 savePumpHistory(currentPumpTarget, val, unit);
-                const payload = { action: 'manual_pump', target: currentPumpTarget, duration: durationMs };
                 const pumpTarget = currentPumpTarget;
-                client.publish(pubTopic, JSON.stringify(payload), {qos: 0}, function(err) {
-                    if (err) alert('Gagal kirim command');
+                
+                sendPumpCommand('manual_pump', pumpTarget, durationMs, () => {
+                    closePumpModal();
+                    startPumpAnimation(pumpTarget, durationMs);
                 });
-                closePumpModal();
-                startPumpAnimation(pumpTarget, durationMs);
             };
 
             // ─── 4.1. SENSOR DATA FETCH (from InfluxDB) ────────────────────────

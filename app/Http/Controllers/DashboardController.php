@@ -303,4 +303,20 @@ class DashboardController extends Controller
             return response()->json(['error' => 'Failed to fetch sensor data'], 500);
         }
     }
+
+    /**
+     * MQTT status check for TCP mode badge.
+     * Returns whether the MqttListener is alive based on heartbeat cache.
+     */
+    public function mqttStatus()
+    {
+        $heartbeat = \Illuminate\Support\Facades\Cache::get('mqtt_listener_heartbeat');
+        $connected = false;
+
+        if ($heartbeat) {
+            $connected = \Carbon\Carbon::parse($heartbeat)->diffInSeconds(now()) < 30;
+        }
+
+        return response()->json(['connected' => $connected]);
+    }
 }
