@@ -37,44 +37,45 @@
 |                         GREENHOUSE                               |
 |  +----------+  +----------+  +----------+  +-----------------+  |
 |  |  ESP32   |  | Sensors  |  |  Relays  |  | Raspberry Pi    |  |
-|  | MQTT/WSS |  | pH/TDS/  |  | R1 R2    |  | Camera Stream   |  |
+|  | MQTT TCP |  | pH/TDS/  |  | R1 R2    |  | Camera Stream   |  |
 |  +----+-----+  | Turb/etc |  | R3 R4    |  +-------+---------+  |
 |       |        +----------+  +----^-----+          |             |
 +-------+----------------------------+----------------+-------------+
-        | MQTT over WSS              | MQTT CMD       | HTTP Stream
+        | MQTT over TCP (1883)       | MQTT CMD       | HTTP Stream
         v                            |                v
 +------------------+         +-------+--------------------------------+
-|   EMQX Broker    |         |  ANALYTICS SERVER (FastAPI :8001)      |
+| Mosquitto Broker |         |  ANALYTICS SERVER (FastAPI :8001)      |
 |  mqtt.broker.com |         |                                        |
 +--------+---------+         |  Risk Scoring Engine   YOLOv8 Detection|
          |                   |  InfluxDB Query        APScheduler     |
-         | WebSocket         |  BMKG Weather          REST API        |
+         | TCP (Daemon)      |  BMKG Weather          REST API        |
          v                   |  - Risk analysis: every 30 min         |
 +------------------+         |  - Plant scan: push from Raspi Pi      |
 | WEB DASHBOARD    |<------->+----------------------------------------+
 | Laravel  :8000   |  REST API (X-API-Key)
 |                  |
-|  Monitoring      |
-|  Charts          |         +------------------+
-|  Manual Control  +-------->|    InfluxDB      |
-|  AI Results      |         |  (Time-Series DB)|
-|  Settings        |         +------------------+
-+------------------+
+|  mqtt:listen     |
+|  daemon (PHP)    |         +------------------+
+|                  +-------->|    InfluxDB      |
+|  API endpoints   |         |  (Time-Series DB)|
++------------------+         +------------------+
 ```
 
 ### Data Flow
 
 | # | Flow | Description |
 |---|------|-------------|
-| 1 | ESP32 → EMQX → Dashboard | Real-time sensor telemetry via MQTT WebSocket |
-| 2 | Dashboard → ESP32 | Manual pump/relay commands via MQTT |
-| 3 | Dashboard → ESP32 | Calibration & config sync via MQTT `set_config` |
-| 4 | AI Server → InfluxDB | Fetch solar panel data for energy analysis |
-| 5 | AI Server → BMKG API | Fetch 3-day weather forecast |
-| 6 | AI Server | Rule-based analysis for energy recommendations |
-| 7 | Raspberry Pi → AI Server | Push captured image for disease detection via HTTP |
-| 8 | AI Server → Dashboard API | Push computed results to DB (X-API-Key) |
-| 9 | Dashboard JS → DB | Polling AI results every 30 seconds |
+| 1 | ESP32 → Mosquitto | Real-time sensor telemetry via MQTT TCP (Port 1883) |
+| 2 | Mosquitto → Laravel Daemon | `php artisan mqtt:listen` catches telemetry & calibrates raw voltages |
+| 3 | Laravel Daemon → InfluxDB | Parsed & calibrated data written to dual buckets (`water_data`, `solar_data`) |
+| 4 | Dashboard UI → Laravel API | Frontend polls internal Laravel API for latest InfluxDB charts |
+| 5 | Dashboard UI → ESP32 | Manual pump/relay commands routed via Laravel backend to MQTT |
+| 6 | Dashboard UI → ESP32 | Calibration & config sync pushed by Laravel controller to MQTT |
+| 7 | AI Server → InfluxDB | Fetch solar panel data for energy analysis |
+| 8 | AI Server → BMKG API | Fetch 3-day weather forecast |
+| 9 | AI Server | Rule-based analysis for energy recommendations |
+| 10 | Raspberry Pi → AI Server | Push captured image for disease detection via HTTP |
+| 11 | AI Server → Dashboard API | Push computed results to DB (X-API-Key) |
 
 ---
 
@@ -134,7 +135,7 @@
 | SQLite / MySQL | — | Primary database |
 | Alpine.js | 3 | Reactive UI components |
 | Chart.js | 4 | Historical sensor charts |
-| MQTT.js | — | WebSocket connection to EMQX |
+| PhpMqtt | 2.1 | Backend MQTT TCP client (daemon + controller) |
 | Vite | 7 | Frontend asset bundler |
 
 ### AI Server (FastAPI)
@@ -153,9 +154,9 @@
 ### Infrastructure
 | Component | Technology |
 |-----------|-----------|
-| MQTT Broker | EMQX (cloud or local) |
-| Time-Series DB | InfluxDB 2.x (with strict Line Protocol type enforcement) |
-| Microcontroller | ESP32 (FreeRTOS Multicore, WiFiManager Captive Portal) |
+| MQTT Broker | Eclipse Mosquitto (TCP port 1883) |
+| Time-Series DB | InfluxDB 2.7 (with strict Line Protocol type enforcement) |
+| Microcontroller | ESP32 (FreeRTOS Multicore, PubSubClient TCP, WiFiManager) |
 | Camera | Raspberry Pi + Pi Camera + HTTP push |
 
 ---
@@ -478,10 +479,10 @@ Dashboard-AMCS-Replika-BRIN-AI/
 
 | Feature | Description |
 |---------|-------------|
-| Core Architecture | FreeRTOS Multicore (Core 0: Network/WSS, Core 1: Sensor/Control) |
+| Core Architecture | FreeRTOS Multicore (Core 0: Network/MQTT, Core 1: Sensor/Control) |
 | Network Provisioning | Captive Portal via WiFiManager (SSID "AMCS-Setup") |
 | Sensor reading | ADS1115 ADC for pH, TDS, Turbidity; DS18B20 for water temp |
-| Connectivity | WiFi + MQTT over WebSocket Secure (WSS port 8083 proxy) |
+| Connectivity | WiFi + MQTT over raw TCP (`PubSubClient` port 1883) |
 | Calibration storage | `Preferences` library (NVS flash) — survives reboot |
 | Data Types | Strict InfluxDB primitive enforcement (Integers vs Floats) |
 | Relay control | 4 relays (R1–R4) for pumps/fan, active LOW |
@@ -506,6 +507,12 @@ Dashboard-AMCS-Replika-BRIN-AI/
 ---
 
 ## Changelog
+
+### V7 — TCP Migration & Backend MQTT Daemon (July 2026)
+- **TCP Migration**: Migrasi hardware dari `WebSocketsClient` ke `PubSubClient` (TCP) untuk menurunkan RAM overhead dan mencegah memory leak di ESP32.
+- **Backend MQTT Daemon**: Frontend JS WebSockets dieliminasi. Laravel kini menjalankan `php artisan mqtt:listen` secara daemon (di-handle oleh Supervisord) untuk menangkap telemetry secara efisien.
+- **InfluxDB Routing**: Konversi raw voltage ke data kalibrasi kini dihitung secara tersentralisasi di sisi PHP Backend sebelum di-routing langsung ke InfluxDB bucket ganda (`water_data` & `solar_data`).
+- **Broker Switch**: Pindah dari EMQX ke standard Eclipse Mosquitto broker untuk optimasi resource cloud deployment.
 
 ### V6 — Final Production Hardening (June 2026)
 - **Rule-Based Risk Scoring Engine**: Pemusnahan dependensi Ollama/LLM demi latensi <1s dan eliminasi halusinasi.
