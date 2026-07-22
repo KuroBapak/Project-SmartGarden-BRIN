@@ -44,6 +44,10 @@ return [
         'client_id'      => env('MQTT_CLIENT_ID', 'WebClient'),
         'username'       => env('MQTT_AUTH_USERNAME', ''),
         'password'       => env('MQTT_AUTH_PASSWORD', ''),
+        'use_tls'        => filter_var(env('MQTT_USE_TLS', false), FILTER_VALIDATE_BOOLEAN),
+        'tls_ca_file'    => env('MQTT_TLS_CA_FILE', ''),
+        'tls_client_cert_file' => env('MQTT_TLS_CLIENT_CERT_FILE', ''),
+        'tls_client_key_file'  => env('MQTT_TLS_CLIENT_KEY_FILE', ''),
     ],
 
     'influxdb' => [

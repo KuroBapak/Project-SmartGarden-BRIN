@@ -27,3 +27,4 @@ public/plant_scans/*
 !public/plant_scans/.gitkeep
 president-cert
 arduino_code.ino
+/storage/certs

@@ -41,10 +41,26 @@ class MqttService
             ->setKeepAliveInterval(60);
 
         if (!empty($this->config['username'])) {
-            $settings->setUsername($this->config['username']);
+            $settings = $settings->setUsername($this->config['username']);
         }
         if (!empty($this->config['password'])) {
-            $settings->setPassword($this->config['password']);
+            $settings = $settings->setPassword($this->config['password']);
+        }
+
+        if (!empty($this->config['use_tls']) && $this->config['use_tls'] === true) {
+            $settings = $settings->setUseTls(true)
+                                 ->setTlsVerifyPeer(false)
+                                 ->setTlsVerifyPeerName(false);
+
+            if (!empty($this->config['tls_ca_file'])) {
+                $settings = $settings->setTlsCertificateAuthorityFile($this->config['tls_ca_file']);
+            }
+            if (!empty($this->config['tls_client_cert_file'])) {
+                $settings = $settings->setTlsClientCertificateFile($this->config['tls_client_cert_file']);
+            }
+            if (!empty($this->config['tls_client_key_file'])) {
+                $settings = $settings->setTlsClientCertificateKeyFile($this->config['tls_client_key_file']);
+            }
         }
 
         return $settings;
